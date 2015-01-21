@@ -597,7 +597,40 @@ public class DataPage {
                 " slots, but slot " + slot + " was requested for deletion.");
         }
 
-        // TODO:  Complete this implementation.
-        throw new UnsupportedOperationException("TODO:  Implement!");
+        // Get the tuple's offset and length.
+        int tupleStart = getSlotValue(dbPage, slot);
+        if (tupleStart == EMPTY_SLOT) {
+            throw new IllegalArgumentException("Slot " + slot +
+                " was requested for deletion, but it is already deleted.");
+        }
+
+        int tupleLength = getTupleLength(dbPage, slot);
+
+        // Mark the slot's entry as empty, and clear out the tuple's space.
+
+        logger.debug(String.format(
+            "Deleting tuple page %d, slot %d with starting offset %d, length %d.",
+            dbPage.getPageNo(), slot, tupleStart, tupleLength));
+
+        deleteTupleDataRange(dbPage, tupleStart, tupleLength);
+        setSlotValue(dbPage, slot, EMPTY_SLOT);
+
+        // Finally, release all empty slots at the end of the slot-list.
+
+        boolean numSlotsChanged = false;
+        for (slot = numSlots - 1; slot >= 0; slot--) {
+            // currSlotValue is either the start of that slot's tuple-data,
+            // or it is set to EMPTY_SLOT.
+            int currSlotValue = getSlotValue(dbPage, slot);
+
+            if (currSlotValue != EMPTY_SLOT)
+                break;
+
+            numSlots--;
+            numSlotsChanged = true;
+        }
+
+        if (numSlotsChanged)
+            setNumSlots(dbPage, numSlots);
     }
 }

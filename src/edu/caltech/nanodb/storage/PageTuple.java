@@ -586,10 +586,16 @@ public abstract class PageTuple implements Tuple {
         }
         newDataSize = getStorageSize(colType, newDataLength);
 
-        if (newDataSize > oldDataSize)
-            insertTupleDataRange(offset, newDataSize - oldDataSize);
-        else
-            deleteTupleDataRange(offset, oldDataSize - newDataSize);
+        int diff = newDataSize - oldDataSize;
+        if (diff > 0) {
+            insertTupleDataRange(offset, diff);
+            pageOffset -= diff;
+        }
+        else if (diff < 0) {
+            diff = -diff;
+            deleteTupleDataRange(offset, diff);
+            pageOffset += diff;
+        }
 
         // Finally, write the value to the column!
 

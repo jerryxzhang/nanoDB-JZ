@@ -4,11 +4,14 @@ package edu.caltech.nanodb.storage.heapfile;
 import java.io.EOFException;
 import java.io.IOException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.qeval.ColumnStats;
+import edu.caltech.nanodb.qeval.ColumnStatsCollector;
 import edu.caltech.nanodb.qeval.TableStats;
 import edu.caltech.nanodb.relations.TableSchema;
 import edu.caltech.nanodb.relations.Tuple;
@@ -399,11 +402,74 @@ public class HeapTupleFile implements TupleFile {
         DataPage.sanityCheck(dbPage);
     }
 
+
     @Override
     public void analyze() throws IOException {
-        // TODO!
-        throw new UnsupportedOperationException("Not yet implemented!");
+        int numPages, numTuples, totalTupleSpace;
+
+        int numCols = schema.numColumns();
+        ColumnStatsCollector[] collectors =
+            new ColumnStatsCollector[numCols];
+        for (int i = 0; i < numCols; i++) {
+            collectors[i] = new ColumnStatsCollector(
+                schema.getColumnInfo(i).getType().getBaseType());
+        }
+
+        numPages = dbFile.getNumPages();
+        numTuples = 0;
+        totalTupleSpace = 0;
+
+        for (int iPage = 1; iPage < numPages; iPage++) {
+            DBPage dbPage = storageManager.loadDBPage(dbFile, iPage);
+
+            totalTupleSpace += DataPage.getTupleDataEnd(dbPage) -
+                DataPage.getTupleDataStart(dbPage);
+
+            int numSlots = DataPage.getNumSlots(dbPage);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug(String.format("Analyzing page %d of %s.  " +
+                    "Page contains %d slots and %d bytes of tuple data.",
+                    iPage, dbFile, numSlots, totalTupleSpace));
+            }
+
+            for (int iSlot = 0; iSlot < numSlots; iSlot++) {
+                int tupleOffset = DataPage.getSlotValue(dbPage, iSlot);
+                if (tupleOffset == DataPage.EMPTY_SLOT)
+                    continue;
+
+                numTuples++;
+
+                // logger.info("Analyzing tuple " + numTuples);
+
+                Tuple tup = new HeapFilePageTuple(schema, dbPage, iSlot, tupleOffset);
+                for (int iCol = 0; iCol < schema.numColumns(); iCol++) {
+                    Object value = tup.getColumnValue(iCol);
+                    collectors[iCol].addValue(value);
+                }
+                tup.unpin();
+            }
+
+            dbPage.unpin();
+        }
+
+        // Generate statistics objects for holding the stats we have collected
+
+        ArrayList<ColumnStats> colStats = new ArrayList<ColumnStats>();
+        for (int i = 0; i < numCols; i++)
+            colStats.add(collectors[i].getColumnStats());
+
+        // In the heap file, number of data pages is the total number of pages
+        // minus the header page.
+        TableStats newStats = new TableStats(numPages - 1, numTuples,
+            (float) totalTupleSpace / (float) numTuples, colStats);
+
+        // Finally, replace the existing stats and save the new info to the
+        // header page.
+        this.stats = newStats;
+        heapFileManager.saveMetadata(this);
     }
+
 
     @Override
     public List<String> verify() throws IOException {

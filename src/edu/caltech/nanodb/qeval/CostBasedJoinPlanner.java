@@ -204,11 +204,11 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                 plan = addPredicateToPlan(plan, finalPredicate);
         }
 
-        // Handle grouping and aggregation next, if there are any aggregate
-        // operations.
-        if (extractor.foundAggregates()) {
-            // Get the grouping expressions (if present) and the aggregates.
-            List<Expression> groupByExprs = selClause.getGroupByExprs();
+        // Handle grouping and aggregation next, if there are any grouping
+        // specifications or aggregate operations.
+        List<Expression> groupByExprs = selClause.getGroupByExprs();
+        if (!groupByExprs.isEmpty() || extractor.foundAggregates()) {
+            // Get the aggregates, if present.
             Map<String, FunctionCall> aggregates = extractor.getAggregateCalls();
 
             // By default, use a hash-based grouping/aggregate node.  Later

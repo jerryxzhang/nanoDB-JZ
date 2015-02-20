@@ -146,18 +146,34 @@ public class SelectivityEstimator {
         Schema exprSchema, ArrayList<ColumnStats> stats) {
 
         float selectivity = 1.0f;
+        float term;
+
+        int numTerms = bool.getNumTerms();
 
         switch (bool.getType()) {
         case AND_EXPR:
-            // TODO:  Compute selectivity of AND expression.
+            // This is an AND:  Multiply conjunct selectivities together.
+            for (int i = 0; i < numTerms; i++) {
+                term = estimateSelectivity(bool.getTerm(i), exprSchema, stats);
+                selectivity *= term;
+            }
+
             break;
 
         case OR_EXPR:
-            // TODO:  Compute selectivity of OR expression.
+            // This is an OR:  Multiply the negation of the disjunct
+            // selectivities and negate it.
+            for (int i = 0; i < numTerms; i++) {
+                term = estimateSelectivity(bool.getTerm(i), exprSchema, stats);
+                selectivity *= (1.0f - term);
+            }
+            selectivity = 1.0f - selectivity;
             break;
 
         case NOT_EXPR:
-            // TODO:  Compute selectivity of NOT expression.
+            // This is a NOT:  Return the negation of the selectivity.
+            term = estimateSelectivity(bool.getTerm(0), exprSchema, stats);
+            selectivity = 1.0f - term;
             break;
 
         default:
@@ -270,10 +286,16 @@ public class SelectivityEstimator {
             // Compute the equality value.  Then, if inequality, invert the
             // result.
 
-            // TODO:  Compute the selectivity.  Note that the ColumnStats type
-            //        will return special values to indicate "unknown" stats;
-            //        your code should detect when this is the case, and fall
-            //        back on the default selectivity.
+            // We can make this selectivity estimate regardless of the
+            // column's type, as long as we have a count of the distinct
+            // values that appear in the column.
+
+            int numUnique = colStats.getNumUniqueValues();
+            if (numUnique > 0) {
+                selectivity = 1.0f / (float) numUnique;
+                if (compType == CompareOperator.Type.NOT_EQUALS)
+                    selectivity = 1.0f - selectivity;
+            }
 
             break;
 
@@ -288,9 +310,12 @@ public class SelectivityEstimator {
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
 
-                // TODO:  Compute the selectivity.  The if-condition ensures
-                //        that you will only compute selectivities if the type
-                //        supports it, and if there are valid stats.
+                Object minVal = colStats.getMinValue();
+                Object maxVal = colStats.getMaxValue();
+
+                selectivity = computeRatio(value, maxVal, minVal, maxVal);
+                if (compType == CompareOperator.Type.LESS_THAN)
+                    selectivity = 1.0f - selectivity;
             }
 
             break;
@@ -306,8 +331,12 @@ public class SelectivityEstimator {
             if (typeSupportsCompareEstimates(sqlType) &&
                 colStats.hasDifferentMinMaxValues()) {
 
-                // TODO:  Compute the selectivity.  Watch out for cut-and-paste
-                //        bugs...
+                Object minVal = colStats.getMinValue();
+                Object maxVal = colStats.getMaxValue();
+
+                selectivity = computeRatio(minVal, value, minVal, maxVal);
+                if (compType == CompareOperator.Type.GREATER_THAN)
+                    selectivity = 1.0f - selectivity;
             }
 
             break;
@@ -355,10 +384,24 @@ public class SelectivityEstimator {
         ColumnStats colOneStats = stats.get(colOneIndex);
         ColumnStats colTwoStats = stats.get(colTwoIndex);
 
-        // TODO:  Compute the selectivity.  Note that the ColumnStats type
-        //        will return special values to indicate "unknown" stats;
-        //        your code should detect when this is the case, and fall
-        //        back on the default selectivity.
+        if (compType == CompareOperator.Type.EQUALS ||
+            compType == CompareOperator.Type.NOT_EQUALS) {
+            // Compute the equality value.  Then, if inequality, invert the
+            // result.
+
+            // We can make this selectivity estimate regardless of the
+            // column's type, as long as we have a count of the distinct
+            // values that appear in both column.
+
+            int numOneUnique = colOneStats.getNumUniqueValues();
+            int numTwoUnique = colTwoStats.getNumUniqueValues();
+
+            if (numOneUnique > 0 && numTwoUnique > 0) {
+                selectivity = 1.0f / (float) Math.max(numOneUnique, numTwoUnique);
+                if (compType == CompareOperator.Type.NOT_EQUALS)
+                    selectivity = 1.0f - selectivity;
+            }
+        }
 
         return selectivity;
     }

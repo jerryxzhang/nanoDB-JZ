@@ -111,11 +111,14 @@ public abstract class AbstractPlannerImpl implements Planner {
     protected void checkJoinsForAggregates(FromClause fromClause,
                                          AggregateFunctionExtractor extractor) {
         if (fromClause.getClauseType() == FromClause.ClauseType.JOIN_EXPR) {
-            fromClause.getPreparedJoinExpr().traverse(extractor);
-            if (extractor.foundAggregates()) {
-                // TODO:  Maybe list the aggregates found?
-                throw new IllegalArgumentException(
-                    "Predicates in the FROM clause cannot contain aggregates.");
+            Expression joinExpr = fromClause.getPreparedJoinExpr();
+            if (joinExpr != null) {
+                joinExpr.traverse(extractor);
+                if (extractor.foundAggregates()) {
+                    // TODO:  Maybe list the aggregates found?
+                    throw new IllegalArgumentException(
+                        "Predicates in the FROM clause cannot contain aggregates.");
+                }
             }
 
             checkJoinsForAggregates(fromClause.getLeftChild(), extractor);

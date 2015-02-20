@@ -173,8 +173,24 @@ public class FileScanNode extends SelectNode {
         TableStats tableStats = tupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
-        // TODO:  Compute the cost of the plan node!
-        cost = null;
+        // If we don't have a predicate, selectivity is 100%, otherwise call the
+        // helper function.
+        float selectivity = 1.0f;
+        if (predicate != null) {
+            selectivity = SelectivityEstimator.estimateSelectivity(predicate,
+                schema, stats);
+        }
+
+        // Grab the left child's cost, then update the cost based on the
+        // selectivity of our predicate.
+
+        float numTuples = tableStats.numTuples;
+        numTuples *= selectivity;
+
+        // The CPU cost will be proportional to the total number of tuples, not
+        // the number of tuples we expect to output.
+        cost = new PlanCost(numTuples, tableStats.avgTupleSize,
+            tableStats.numTuples, tableStats.numDataPages);
 
         // TODO:  We should also update the table statistics based on the
         //        predicate, but that's too complicated, so we'll leave them

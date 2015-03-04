@@ -1,16 +1,31 @@
 package edu.caltech.nanodb.commands;
 
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 
+import edu.caltech.nanodb.indexes.IndexManager;
+
+import edu.caltech.nanodb.relations.TableInfo;
+
+import edu.caltech.nanodb.storage.TableManager;
 import edu.caltech.nanodb.storage.StorageManager;
 
 
 /**
  * This command-class represents the <tt>CREATE INDEX</tt> DDL command.
+ *
+ * @todo (donnie) This code needs to be refactored!!!  For example, the
+ *       "populate a new index based on an existing table" operation should be
+ *       in the indexes package as a static helper operation.
+ *
+ * @todo (donnie) There seems to be a lot of overlap between this code's index
+ *       manipulation code and the CREATE TABLE index code.  See about combining.
  */
 public class CreateIndexCommand extends Command {
     /** A logging object for reporting anything interesting that happens. **/
@@ -86,6 +101,36 @@ public class CreateIndexCommand extends Command {
     public void execute(StorageManager storageManager)
         throws ExecutionException {
 
-        throw new ExecutionException("Not yet implemented!");
+        TableManager tableManager = storageManager.getTableManager();
+        IndexManager indexManager = storageManager.getIndexManager();
+
+        // Open the table and get the schema for the table.
+        logger.debug(String.format("Opening table %s to retrieve schema",
+            tableName));
+        TableInfo tableInfo;
+        try {
+            tableInfo = tableManager.openTable(tableName);
+        } catch (FileNotFoundException e) {
+            throw new ExecutionException(String.format(
+                "Specified table %s doesn't exist!", tableName), e);
+        } catch (IOException e) {
+            throw new ExecutionException(String.format(
+                "Error occurred while opening table %s", tableName), e);
+        }
+
+        try {
+            indexManager.addIndexToTable(tableInfo, indexName, columnNames,
+                                         unique);
+        }
+        catch (IOException e) {
+            throw new ExecutionException(String.format(
+                "Error occurred while creating index %s on table %s",
+                indexName, tableName), e);
+        }
+
+        logger.debug(String.format("New index %s on table %s is created!",
+            indexName, tableName));
+
+        out.printf("Created index %s on table %s.%n", indexName, tableName);
     }
 }

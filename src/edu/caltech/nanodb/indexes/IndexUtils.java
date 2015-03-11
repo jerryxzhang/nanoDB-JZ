@@ -11,9 +11,8 @@ import edu.caltech.nanodb.expressions.TupleLiteral;
 import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.ColumnInfo;
 import edu.caltech.nanodb.relations.ColumnType;
-import edu.caltech.nanodb.relations.ForeignKeyColumnIndexes;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
 import edu.caltech.nanodb.relations.ForeignKeyValueChangeOption;
-import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.SQLDataType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.SchemaNameException;
@@ -124,7 +123,7 @@ public class IndexUtils {
     */
 
     /**
-     * This method constructs a {@link ForeignKeyColumnIndexes} object that
+     * This method constructs a {@link ForeignKeyColumnRefs} object that
      * includes the columns named in the input list, as well as the referenced
      * table and column names.  Note that this method <u>does not</u> update
      * the schema stored on disk, or create any other supporting files.
@@ -149,7 +148,7 @@ public class IndexUtils {
      *         column-name is ambiguous (unlikely), or if a column is specified
      *         multiple times in the input list.
      */
-    public static ForeignKeyColumnIndexes makeForeignKey(TableSchema tableSchema,
+    public static ForeignKeyColumnRefs makeForeignKey(TableSchema tableSchema,
         List<String> columnNames, String refTableName,
         TableSchema refTableSchema, List<String> refColumnNames,
         ForeignKeyValueChangeOption onDelete,
@@ -207,7 +206,7 @@ public class IndexUtils {
         // unspecified in the constructor.  They are set to
         // ForeignKeyValueChangeOption.RESTRICT as a default in this case in
         // the constructor for ForeignKeyColumnIndexes.
-        return new ForeignKeyColumnIndexes(colIndexes, refTableName,
+        return new ForeignKeyColumnRefs(colIndexes, refTableName,
             refColIndexes, onDelete, onUpdate);
     }
 
@@ -288,7 +287,11 @@ public class IndexUtils {
         // pointer to each one.
         tup = tableTupleFile.getFirstTuple();
         while (tup != null) {
-            tableTuples.add(tup.getExternalReference());
+            if (!tableTuples.add(tup.getExternalReference())) {
+                // This should never happen.
+                throw new IllegalStateException("The impossible has " +
+                    "happened:  two tuples had the same external reference!");
+            }
             tup = tableTupleFile.getNextTuple(tup);
         }
 

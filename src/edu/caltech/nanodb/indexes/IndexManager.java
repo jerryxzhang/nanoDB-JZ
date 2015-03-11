@@ -4,6 +4,7 @@ package edu.caltech.nanodb.indexes;
 import java.io.IOException;
 import java.util.List;
 
+import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.TableConstraintType;
 import edu.caltech.nanodb.relations.TableInfo;
 
@@ -20,11 +21,18 @@ import edu.caltech.nanodb.relations.TableInfo;
  */
 public interface IndexManager {
 
+    /**
+     * A constant specifying the name of the column that will hold the table's
+     * tuple pointer in an index file.
+     */
+    public static final String COLNAME_TUPLEPTR = "#TUPLE_PTR";
+
+
     boolean indexExists(String tableName, String indexName) throws IOException;
 
 
-    void addIndexToTable(TableInfo tableInfo, String indexName,
-        List<String> columnNames, boolean unique) throws IOException;
+    IndexInfo addIndexToTable(TableInfo tableInfo, ColumnRefs indexColRefs)
+        throws IOException;
 
 
     void createIndex(IndexInfo indexInfo, String indexName) throws IOException;

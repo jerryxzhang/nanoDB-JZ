@@ -11,22 +11,16 @@ import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.indexes.IndexManager;
 
+import edu.caltech.nanodb.relations.ColumnRefs;
+import edu.caltech.nanodb.relations.KeyColumnRefs;
+import edu.caltech.nanodb.relations.TableConstraintType;
 import edu.caltech.nanodb.relations.TableInfo;
 
 import edu.caltech.nanodb.storage.TableManager;
 import edu.caltech.nanodb.storage.StorageManager;
 
 
-/**
- * This command-class represents the <tt>CREATE INDEX</tt> DDL command.
- *
- * @todo (donnie) This code needs to be refactored!!!  For example, the
- *       "populate a new index based on an existing table" operation should be
- *       in the indexes package as a static helper operation.
- *
- * @todo (donnie) There seems to be a lot of overlap between this code's index
- *       manipulation code and the CREATE TABLE index code.  See about combining.
- */
+/** This command-class represents the <tt>CREATE INDEX</tt> DDL command. */
 public class CreateIndexCommand extends Command {
     /** A logging object for reporting anything interesting that happens. **/
     private static Logger logger = Logger.getLogger(CreateIndexCommand.class);
@@ -119,8 +113,18 @@ public class CreateIndexCommand extends Command {
         }
 
         try {
-            indexManager.addIndexToTable(tableInfo, indexName, columnNames,
-                                         unique);
+            int[] cols = tableInfo.getSchema().getColumnIndexes(columnNames);
+
+            ColumnRefs colRefs;
+            if (unique) {
+                colRefs = new KeyColumnRefs(indexName, cols,
+                    TableConstraintType.UNIQUE);
+            }
+            else {
+                colRefs = new ColumnRefs(indexName, cols);
+            }
+
+            indexManager.addIndexToTable(tableInfo, colRefs);
         }
         catch (IOException e) {
             throw new ExecutionException(String.format(

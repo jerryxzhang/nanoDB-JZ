@@ -10,7 +10,7 @@ import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.CommandProperties;
 import edu.caltech.nanodb.indexes.IndexManager;
-import edu.caltech.nanodb.relations.ForeignKeyColumnIndexes;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
 import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.relations.TableSchema;
@@ -221,8 +221,8 @@ public class IndexedTableManager implements TableManager {
         // Now drop the foreign key constraint fields that this table
         // may have on other parent tables. Scan through this table's
         // Foreign key indexes to see which tables need maintenance
-        List<ForeignKeyColumnIndexes> forKeyList = schema.getForeignKeys();
-        for (ForeignKeyColumnIndexes forKey : forKeyList) {
+        List<ForeignKeyColumnRefs> forKeyList = schema.getForeignKeys();
+        for (ForeignKeyColumnRefs forKey : forKeyList) {
             // Open the parent table, and iterate through all of its primary
             // and candidate keys, dropping any foreign key constraints that
             // refer to the child table with tableName

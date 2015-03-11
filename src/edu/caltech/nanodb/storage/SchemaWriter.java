@@ -14,7 +14,7 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.ColumnInfo;
 import edu.caltech.nanodb.relations.ColumnType;
-import edu.caltech.nanodb.relations.ForeignKeyColumnIndexes;
+import edu.caltech.nanodb.relations.ForeignKeyColumnRefs;
 import edu.caltech.nanodb.relations.ForeignKeyValueChangeOption;
 import edu.caltech.nanodb.relations.KeyColumnRefs;
 import edu.caltech.nanodb.relations.SQLDataType;
@@ -307,7 +307,7 @@ public class SchemaWriter {
         for (KeyColumnRefs ck : schema.getCandidateKeys())
             writeKey(pgWriter, TableConstraintType.UNIQUE, ck);
 
-        for (ForeignKeyColumnIndexes fk : schema.getForeignKeys())
+        for (ForeignKeyColumnRefs fk : schema.getForeignKeys())
             writeForeignKey(pgWriter, fk);
 
         if (logger.isDebugEnabled()) {
@@ -381,7 +381,7 @@ public class SchemaWriter {
 
 
     protected void writeForeignKey(PageWriter pgWriter,
-                                   ForeignKeyColumnIndexes key) {
+                                   ForeignKeyColumnRefs key) {
         logger.debug(" * Foreign key " + key);
 
         // Constraint type, and name of constraint if it's specified.
@@ -613,7 +613,7 @@ public class SchemaWriter {
                     break;
 
                 case FOREIGN_KEY:
-                    ForeignKeyColumnIndexes fkey =
+                    ForeignKeyColumnRefs fkey =
                         readForeignKey(pgReader, cTypeID);
                     schema.addForeignKey(fkey);
                     break;
@@ -690,7 +690,7 @@ public class SchemaWriter {
     }
 
 
-    protected ForeignKeyColumnIndexes readForeignKey(PageReader pgReader, int typeID) {
+    protected ForeignKeyColumnRefs readForeignKey(PageReader pgReader, int typeID) {
         logger.debug(" * Reading foreign key");
 
         // Read the constraint's name, if it's specified.
@@ -719,7 +719,7 @@ public class SchemaWriter {
             refCols[i] = pgReader.readUnsignedByte();
         }
 
-        ForeignKeyColumnIndexes fk = new ForeignKeyColumnIndexes(
+        ForeignKeyColumnRefs fk = new ForeignKeyColumnRefs(
             keyCols, refTableName, refCols, onDeleteOption, onUpdateOption);
         fk.setConstraintName(constraintName);
 
@@ -760,6 +760,6 @@ public class SchemaWriter {
         // This should always be specified.
         String indexName = pgReader.readVarString255();
 
-        return new ColumnRefs(indexName, idxCols, null);
+        return new ColumnRefs(indexName, idxCols);
     }
 }

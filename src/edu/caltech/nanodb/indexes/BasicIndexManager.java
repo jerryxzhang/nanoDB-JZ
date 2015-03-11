@@ -83,29 +83,19 @@ public class BasicIndexManager implements IndexManager {
 
 
     @Override
-    public void addIndexToTable(TableInfo tableInfo, String indexName,
-        List<String> columnNames, boolean unique) throws IOException {
+    public IndexInfo addIndexToTable(TableInfo tableInfo,
+        ColumnRefs indexColRefs) throws IOException {
+
+        if (tableInfo == null)
+            throw new IllegalArgumentException("tableInfo cannot be null");
+
+        if (indexColRefs == null)
+            throw new IllegalArgumentException("indexColRefs cannot be null");
 
         // Figure out the schema and other essential details of the index.
 
         String tableName = tableInfo.getTableName();
         TableSchema tableSchema = tableInfo.getSchema();
-
-        // indexColRefs is used to update the table's metadata; it holds
-        // the indexes of the columns that are part of the index.
-        //
-        // We generate a key if the index is a unique index, since we will
-        // also need to add another candidate key to the table's metadata.
-        // (Simplifies some of the later steps.)
-        ColumnRefs indexColRefs;
-        int[] colIndexes = tableSchema.getColumnIndexes(columnNames);
-        if (unique) {
-            indexColRefs = new KeyColumnRefs(indexName, colIndexes,
-                TableConstraintType.UNIQUE);
-        }
-        else {
-            indexColRefs = new ColumnRefs(indexName, colIndexes, null);
-        }
 
         // TODO:  Check if current columns already are an index for this table.
         //        (Not essential, but you don't want to be redundant.)
@@ -124,6 +114,7 @@ public class BasicIndexManager implements IndexManager {
         }
         */
 
+        String indexName = indexColRefs.getIndexName();
         logger.debug(String.format("Creating an IndexInfo object " +
             "describing the new index %s on table %s.",
             indexName != null ? indexName : "[unnamed]", tableName));
@@ -140,7 +131,12 @@ public class BasicIndexManager implements IndexManager {
             createIndex(indexInfo, indexName);
         }
 
-        if (unique)
+        logger.debug("Index created.  Index name is " +
+            indexInfo.getIndexName() + ", and filename is " +
+            indexInfo.getTupleFile().getDBFile());
+
+        TableConstraintType constraintType = indexColRefs.getConstraintType();
+        if (constraintType != null && constraintType.isUnique())
             tableSchema.addCandidateKey((KeyColumnRefs) indexColRefs);
         else
             tableSchema.addIndex(indexColRefs);
@@ -150,6 +146,8 @@ public class BasicIndexManager implements IndexManager {
 
         // Populate the new index from the table's tuples.
         populateIndex(tableInfo, indexInfo);
+
+        return indexInfo;
     }
 
 
@@ -285,8 +283,12 @@ public class BasicIndexManager implements IndexManager {
             }
             while (!f.createNewFile());
         }
+
         indexInfo.setIndexName(indexName);
 
+        // Delete the file so we can create it in the createIndex() call.
+        // TODO:  This is REALLY gross.
+        f.delete();
         createIndex(indexInfo, indexName);
     }
 

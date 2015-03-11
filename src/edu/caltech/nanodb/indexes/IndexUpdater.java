@@ -118,7 +118,6 @@ public class IndexUpdater implements RowEventListener {
      * @param ptup the new tuple that was inserted into the table
      */
     private void addRowToIndexes(TableInfo tblFileInfo, PageTuple ptup) {
-
         logger.debug("Adding tuple " + ptup + " to indexes for table " +
             tblFileInfo.getTableName());
 

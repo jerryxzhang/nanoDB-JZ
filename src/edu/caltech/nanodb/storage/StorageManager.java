@@ -11,6 +11,7 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.expressions.TypeCastException;
 
 import edu.caltech.nanodb.indexes.BasicIndexManager;
+import edu.caltech.nanodb.indexes.DatabaseConstraintEnforcer;
 import edu.caltech.nanodb.indexes.IndexManager;
 
 import edu.caltech.nanodb.indexes.IndexUpdater;
@@ -261,7 +262,7 @@ public class StorageManager {
 
         if (ENABLE_INDEXES) {
             // TODO:  Register the event-handler that enforces database constraints!
-            // eventDispatcher.addRowEventListener(new DatabaseConstraintEnforcer(storageMgr));
+            // eventDispatcher.addRowEventListener(new DatabaseConstraintEnforcer(this));
 
             // Register the event-handler that updates indexes when tables change.
             eventDispatcher.addRowEventListener(new IndexUpdater(this));

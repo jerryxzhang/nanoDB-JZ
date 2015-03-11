@@ -10,8 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import edu.caltech.nanodb.indexes.IndexInfo;
-
 
 /**
  * This class extends the {@link Schema} class with features specific to
@@ -44,8 +42,8 @@ public class TableSchema extends Schema {
      * A collection of foreign-key objects specifying other tables that this
      * table references.
      */
-    private ArrayList<ForeignKeyColumnIndexes> foreignKeys =
-        new ArrayList<ForeignKeyColumnIndexes>();
+    private ArrayList<ForeignKeyColumnRefs> foreignKeys =
+        new ArrayList<ForeignKeyColumnRefs>();
 
 
     /**
@@ -60,6 +58,9 @@ public class TableSchema extends Schema {
      * Adds a column with given index to list of NOT NULL constrained columns.
      *
      * @param colIndex the integer index of the column to NOT NULL constrain.
+     *
+     * @return true if the column previous was NULLable, or false if the
+     *         column already had a NOT NULL constraint on it before this call.
      */
     public boolean addNotNull(int colIndex) {
         if (colIndex < 0 || colIndex >= numColumns()) {
@@ -223,33 +224,39 @@ public class TableSchema extends Schema {
      *         columns specified in <tt>k</tt>
      */
     public boolean hasKeyOnColumns(ColumnRefs k) {
-        if (primaryKey != null && primaryKey.hasSameColumns(k))
-            return true;
-
-        for (KeyColumnRefs ck : candidateKeys) {
-            if (ck.hasSameColumns(k))
-                return true;
-        }
-
-        return false;
+        return (getKeyOnColumns(k) != null);
     }
 
-    public String keyNameOnColumns(ColumnRefs k) {
-        if (primaryKey != null && primaryKey.hasSameColumns(k)) {
-            return primaryKey.getIndexName();
-        }
 
-        for (KeyColumnRefs ck : candidateKeys) {
+    public KeyColumnRefs getKeyOnColumns(ColumnRefs k) {
+        if (primaryKey != null && primaryKey.hasSameColumns(k))
+            return primaryKey;
+
+        for (KeyColumnRefs ck : candidateKeys)
             if (ck.hasSameColumns(k))
-                return ck.getIndexName();
-        }
+                return ck;
 
         return null;
     }
 
-    public void addForeignKey(ForeignKeyColumnIndexes fk) {
+
+    public List<KeyColumnRefs> getAllKeysOnColumns(ColumnRefs k) {
+        ArrayList<KeyColumnRefs> keys = new ArrayList<>();
+
+        if (primaryKey != null && primaryKey.hasSameColumns(k))
+            keys.add(primaryKey);
+
+        for (KeyColumnRefs ck : candidateKeys)
+            if (ck.hasSameColumns(k))
+                keys.add(ck);
+
+        return keys;
+    }
+
+
+    public void addForeignKey(ForeignKeyColumnRefs fk) {
         if (foreignKeys == null)
-            foreignKeys = new ArrayList<ForeignKeyColumnIndexes>();
+            foreignKeys = new ArrayList<ForeignKeyColumnRefs>();
 
         foreignKeys.add(fk);
     }
@@ -260,7 +267,7 @@ public class TableSchema extends Schema {
     }
 
 
-    public List<ForeignKeyColumnIndexes> getForeignKeys() {
+    public List<ForeignKeyColumnRefs> getForeignKeys() {
         return Collections.unmodifiableList(foreignKeys);
     }
 
@@ -280,13 +287,13 @@ public class TableSchema extends Schema {
      * indexes built on these columns.
      *
      * @param columnNames the names of columns to test for
-     * @return a list of index names built on the specified columns
+     * @return a set of index names built on the specified columns
      */
-    public List<String> getIndexNames(List<String> columnNames) {
+    public Set<String> getIndexNames(List<String> columnNames) {
         int[] colIndexes = getColumnIndexes(columnNames);
         ColumnRefs index = new ColumnRefs(colIndexes);
 
-        ArrayList<String> indexNames = new ArrayList<String>();
+        Set<String> indexNames = new HashSet<String>();
         for (Map.Entry<String, ColumnRefs> entry : indexes.entrySet()) {
             if (index.hasSameColumns(entry.getValue()))
                 indexNames.add(entry.getKey());
@@ -296,7 +303,7 @@ public class TableSchema extends Schema {
     }
 
 
-    public List<String> getIndexNames() {
-        return new ArrayList<String>(indexes.keySet());
+    public Set<String> getIndexNames() {
+        return new HashSet<String>(indexes.keySet());
     }
 }

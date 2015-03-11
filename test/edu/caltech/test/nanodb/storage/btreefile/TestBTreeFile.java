@@ -104,13 +104,13 @@ public class TestBTreeFile extends SqlTestCase {
 
         // TODO:  This is necessary because the btree code doesn't unpin
         //        pages properly...
-        server.getStorageManager().flushAllData();
+        // server.getStorageManager().flushAllData();
     }
 
 
     public void testBTreeTableOnePageInsert() throws Exception {
         tryDoCommand("CREATE TABLE btree_one_page (a INTEGER, b VARCHAR(20)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_one_page", 300, 200, 3, 20, false);
     }
@@ -118,7 +118,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableTwoPageInsert() throws Exception {
         tryDoCommand("CREATE TABLE btree_two_page (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_two_page", 400, 200, 20, 50, false);
     }
@@ -126,7 +126,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableTwoLevelInsert() throws Exception {
         tryDoCommand("CREATE TABLE btree_two_level (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_two_level", 10000, 1000, 20, 50, false);
     }
@@ -134,7 +134,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableThreeLevelInsert() throws Exception {
         tryDoCommand("CREATE TABLE btree_three_level (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_three_level", 100000, 5000, 150, 250, false);
     }
@@ -142,7 +142,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableOnePageInsertDelete() throws Exception {
         tryDoCommand("CREATE TABLE btree_one_page_del (a INTEGER, b VARCHAR(20)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_one_page_del", 400, 200, 3, 20, true);
     }
@@ -150,7 +150,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableTwoPageInsertDelete() throws Exception {
         tryDoCommand("CREATE TABLE btree_two_page_del (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_two_page_del", 500, 200, 20, 50, true);
     }
@@ -158,7 +158,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableTwoLevelInsertDelete() throws Exception {
         tryDoCommand("CREATE TABLE btree_two_level_del (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_two_level_del", 12000, 1000, 20, 50, true);
     }
@@ -166,7 +166,7 @@ public class TestBTreeFile extends SqlTestCase {
 
     public void testBTreeTableThreeLevelInsertDelete() throws Exception {
         tryDoCommand("CREATE TABLE btree_three_level_del (a INTEGER, b VARCHAR(50)) " +
-            "PROPERTIES (storage = btree);", false);
+            "PROPERTIES (storage = 'btree');", false);
 
         runBTreeTest("btree_three_level_del", 120000, 5000, 150, 250, true);
     }

@@ -29,7 +29,7 @@ public class ColumnRefs {
     private TableConstraintType constraintType;
 
 
-    public ColumnRefs(String indexName, int[] colIndexes,
+    protected ColumnRefs(String indexName, int[] colIndexes,
                       TableConstraintType constraintType) {
         if (colIndexes == null)
             throw new IllegalArgumentException("colIndexes must be specified");
@@ -67,6 +67,11 @@ public class ColumnRefs {
 
     public ColumnRefs(int[] colIndexes) {
         this(null, colIndexes, null);
+    }
+
+
+    public ColumnRefs(String indexName, int[] colIndexes) {
+        this(indexName, colIndexes, null);
     }
 
 

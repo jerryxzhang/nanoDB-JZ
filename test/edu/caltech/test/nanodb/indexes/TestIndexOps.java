@@ -1,6 +1,8 @@
 package edu.caltech.test.nanodb.indexes;
 
 
+import java.util.Set;
+
 import edu.caltech.nanodb.indexes.IndexManager;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.storage.TableManager;
@@ -39,33 +41,26 @@ public class TestIndexOps extends SqlTestCase {
      */
     public void testCreateNormalIndex() throws Throwable {
         // Perform the result to create the index. Table is test_index_ops
-        CommandResult result;
-        result = server.doCommand(
-            "CREATE INDEX idx_test1 ON test_index_ops (a)", false);
+        server.doCommand("CREATE INDEX idx_test1 ON test_index_ops (a)", false);
 
         // Get the IndexInfo corresponding to the created index
+
         StorageManager storageManager = server.getStorageManager();
 	    TableManager tableManager = storageManager.getTableManager();
         IndexManager indexManager = storageManager.getIndexManager();
-        TableInfo tableInfo = tableManager.openTable("test_index_ops");
-        IndexInfo indexInfo = indexManager.openIndex(tableInfo,
-            "idx_test1");
+
+        TableInfo tableInfo = tableManager.openTable("TEST_INDEX_OPS");
+        IndexInfo indexInfo = indexManager.openIndex(tableInfo, "IDX_TEST1");
 
         // Check that the index criteria are appropriate
-        assert(indexInfo.getIndexName().equals("idx_test1"));
-        assert(indexInfo.getTableName().equals("test_index_ops"));
+        assert(indexInfo.getIndexName().equals("IDX_TEST1"));
+        assert(indexInfo.getTableName().equals("TEST_INDEX_OPS"));
 
         // Check tblFileInfo has the schemas stored
         TableSchema schema = tableInfo.getSchema();
 
-        for (String indexName : schema.getIndexes().keySet()) {
-            // Should only be one index name in this particular test
-            assert(indexName.equals("idx_test1"));
-
-            // Then drop the index
-            indexManager.dropIndex(tableInfo, indexName);
-            tableManager.closeTable(tableInfo);
-        }
+        Set<String> indexNames = schema.getIndexNames();
+        assert(indexNames.contains("IDX_TEST1"));
     }
 
 
@@ -107,8 +102,8 @@ public class TestIndexOps extends SqlTestCase {
 	        TableManager tableManager = storageManager.getTableManager();
             IndexManager indexManager = storageManager.getIndexManager();
 
-            TableInfo tableInfo = tableManager.openTable("test_index_ops");
-            indexManager.dropIndex(tableInfo, "idx_test3");
+            TableInfo tableInfo = tableManager.openTable("TEST_INDEX_OPS");
+            indexManager.dropIndex(tableInfo, "IDX_TEST3");
             tableManager.closeTable(tableInfo);
 
             assert false;
@@ -133,7 +128,7 @@ public class TestIndexOps extends SqlTestCase {
             "DROP INDEX idx_test4 ON test_index_ops", false);
         StorageManager storageManager = server.getStorageManager();
         TableManager tableManager = storageManager.getTableManager();
-        TableInfo tableInfo = tableManager.openTable("test_index_ops");
+        TableInfo tableInfo = tableManager.openTable("TEST_INDEX_OPS");
         // Check tblFileInfo has the index deleted from it
         TableSchema schema = tableInfo.getSchema();
         if (!schema.getIndexes().isEmpty()) {

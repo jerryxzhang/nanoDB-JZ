@@ -409,29 +409,37 @@ public class TransactionManager implements BufferManagerObserver {
      */
     @Override
     public void beforeWriteDirtyPages(List<DBPage> pages) throws IOException {
-        // TODO:  IMPLEMENT
-        //
-        // This implementation must enforce the write-ahead logging rule (aka
-        // the WAL rule) by ensuring that the write-ahead log reflects all
-        // changes to all of the specified pages, on disk, before any of these
-        // pages may be written to disk.
-        //
-        // Recall that DBPages have a pageLSN field that is set to the LSN
-        // of the last WAL record describing a change to the page.  This value
-        // is not always set; it will be null if the page is part of a data
-        // file whose type is not logged.  (It may also be null if there is a
-        // bug in the write-ahead logging code.  It would be wise to report a
-        // warning, or throw an exception, if a page doesn't have a LSN when
-        // it ought to.)
-        //
-        // Some file types are not recorded to the write-ahead log; these
-        // pages should be ignored when determining how to update the WAL.
-        // You can find a page's file-type by doing something like this:
-        // dbPage.getDBFile().getType().  If it is WRITE_AHEAD_LOG_FILE or
-        // TXNSTATE_FILE then you should ignore the page.
-        //
-        // Finally, you can use the forceWAL(LogSequenceNumber) function to
-        // force the WAL to be written out to the specified LSN.
+        // First, find out how much of the WAL must be forced to allow
+        // these pages to be written back to disk.
+        LogSequenceNumber maxLSN = null;
+        for (DBPage dbPage : pages) {
+            DBFileType type = dbPage.getDBFile().getType();
+            if (type == DBFileType.WRITE_AHEAD_LOG_FILE ||
+                type == DBFileType.TXNSTATE_FILE) {
+                // We don't log changes to these files.
+                continue;
+            }
+
+            LogSequenceNumber pageLSN = dbPage.getPageLSN();
+            logger.info("Considering LSN of dirty page:  " + pageLSN);
+            if (pageLSN != null) {
+                if (maxLSN == null || pageLSN.compareTo(maxLSN) > 0)
+                    maxLSN = pageLSN;
+            }
+            else {
+                logger.warn(String.format(
+                    "Transaction processing is enabled, but dirty " +
+                    "page %d in file %s doesn't have a LSN.",
+                    dbPage.getPageNo(), dbPage.getDBFile()));
+            }
+        }
+
+        if (maxLSN != null) {
+            logger.info("Found max LSN:  " + maxLSN);
+
+            // Force the WAL out to the specified point.
+            forceWAL(maxLSN);
+        }
     }
 
 
@@ -450,26 +458,61 @@ public class TransactionManager implements BufferManagerObserver {
      *         going to be broken.
      */
     public void forceWAL(LogSequenceNumber lsn) throws IOException {
-        // TODO:  IMPLEMENT
-        //
-        // Note that the "next LSN" value must be determined from both the
-        // current LSN *and* its record size; otherwise we lose the last log
-        // record in the WAL file.  You can use this static method:
-        //
-        // int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
-        // WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
+        // If the WAL has already been forced out past the specified LSN,
+        // we don't need to do anything.
+        if (txnStateNextLSN.compareTo(lsn) >= 0) {
+            logger.debug(String.format("Request to force WAL to LSN %s " +
+                "unnecessary; already forced to %s.", lsn, txnStateNextLSN));
+
+            return;
+        }
+
+        // Flush all dirty pages for the write-ahead log, then sync the WAL to
+        // disk.
+
+        BufferManager bufferManager = storageManager.getBufferManager();
+
+        // Go through all WAL files that we need to sync the entirety of, and
+        // write/sync them.
+        for (int fileNo = txnStateNextLSN.getLogFileNo();
+             fileNo < lsn.getLogFileNo(); fileNo++) {
+
+            String walFileName = WALManager.getWALFileName(fileNo);
+            DBFile walFile = bufferManager.getFile(walFileName);
+            if (walFile != null)
+                bufferManager.writeDBFile(walFile, /* sync */ true);
+        }
+
+        // This is the very last position in the last WAL file that we need
+        // to make sure is output to disk.
+        int lastPosition = lsn.getFileOffset() + lsn.getRecordSize();
+
+        // For the last WAL file, we only need to write out pages up to the
+        // specified LSN's page number.
+        String walFileName = WALManager.getWALFileName(lsn.getLogFileNo());
+        DBFile walFile = bufferManager.getFile(walFileName);
+        if (walFile != null) {
+            int pageNo = lastPosition / walFile.getPageSize();
+            bufferManager.writeDBFile(walFile, 0, pageNo, /* sync */ true);
+        }
+
+        // Finally, update the transaction state to record the specified LSN
+        // that was written out.  This call also syncs the file; at that
+        // point, the WAL is officially updated.
+
+        // Note that we must compute what the "next LSN" should be from the
+        // current LSN and its record size; otherwise we lose the last log
+        // record in the WAL file.
+
+        txnStateNextLSN =
+            WALManager.computeNextLSN(lsn.getLogFileNo(), lastPosition);
+        storeTxnStateToFile();
+
+        logger.debug(String.format("WAL was successfully forced to LSN %s " +
+            "(plus %d bytes)", lsn, lsn.getRecordSize()));
     }
 
 
-    /**
-     * This method forces the entire write-ahead log out to disk, syncing the
-     * log as well.  This version is intended to be used during shutdown
-     * processing in order to record all WAL changes to disk.
-     *
-     * @throws IOException if an IO error occurs while attempting to force the
-     *         WAL file to disk.  If a failure occurs, the database is probably
-     *         going to be broken.
-     */
     public void forceWAL() throws IOException {
         forceWAL(walManager.getNextLSN());
     }

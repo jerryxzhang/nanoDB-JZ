@@ -357,6 +357,8 @@ public class HeapTupleFile implements TupleFile {
         HeapFilePageTuple pageTup =
             HeapFilePageTuple.storeNewTuple(schema, dbPage, slot, tupOffset, tup);
 
+        storageManager.logDBPageWrite(dbPage);
+
         DataPage.sanityCheck(dbPage);
 
         return pageTup;
@@ -390,6 +392,8 @@ public class HeapTupleFile implements TupleFile {
         }
 
         DBPage dbPage = ptup.getDBPage();
+        storageManager.logDBPageWrite(dbPage);
+
         DataPage.sanityCheck(dbPage);
     }
 
@@ -406,6 +410,7 @@ public class HeapTupleFile implements TupleFile {
 
         DBPage dbPage = ptup.getDBPage();
         DataPage.deleteTuple(dbPage, ptup.getSlot());
+        storageManager.logDBPageWrite(dbPage);
 
         DataPage.sanityCheck(dbPage);
     }

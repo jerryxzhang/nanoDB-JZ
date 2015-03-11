@@ -100,7 +100,7 @@ public class TestBTreeFile extends SqlTestCase {
         sortTupleLiteralArray(inserted);
         CommandResult result = tryDoCommand(String.format("SELECT * FROM %s;",
             tableName), true);
-        checkOrderedResults(inserted.toArray(new TupleLiteral[inserted.size()]), result);
+        assert checkOrderedResults(inserted.toArray(new TupleLiteral[inserted.size()]), result);
 
         // TODO:  This is necessary because the btree code doesn't unpin
         //        pages properly...

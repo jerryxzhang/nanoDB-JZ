@@ -11,7 +11,6 @@ import org.apache.log4j.Logger;
 import edu.caltech.nanodb.expressions.TypeCastException;
 
 import edu.caltech.nanodb.indexes.BasicIndexManager;
-import edu.caltech.nanodb.indexes.DatabaseConstraintEnforcer;
 import edu.caltech.nanodb.indexes.IndexManager;
 
 import edu.caltech.nanodb.indexes.IndexUpdater;

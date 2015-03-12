@@ -37,10 +37,15 @@ import edu.caltech.nanodb.storage.StorageManager;
 
 
 /**
+ * <p>
  * This class enforces all database constraints on the database schema,
  * including <tt>NOT NULL</tt> constraints, primary key/unique constraints,
  * and foreign key constraints.  It also performs the appropriate updates
  * when the target of a foreign-key reference is updated or deleted.
+ * </p>
+ * <p>
+ * This class has some interesting design challenges to work around.
+ * </p>
  */
 public class DatabaseConstraintEnforcer implements RowEventListener {
     /** A logging object for reporting anything interesting that happens. */
@@ -66,37 +71,41 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
      * Perform processing before a row is inserted into a table.
      *
      * @param tableInfo the table that the tuple will be inserted into.
-     * @param tup the new tuple that will be inserted into the table.
+     * @param newTuple the new tuple that will be inserted into the table.
      */
     @Override
-    public void beforeRowInserted(TableInfo tableInfo, Tuple tup)
+    public void beforeRowInserted(TableInfo tableInfo, Tuple newTuple)
             throws IOException {
 
-        TableSchema tblSchema = tableInfo.getTupleFile().getSchema();
+        TableSchema schema = tableInfo.getTupleFile().getSchema();
 
-        boolean result;
-        String idxName;
-        IndexInfo indexInfo;
+        // Check NOT NULL constraints first - they are cheapest.
+        checkNotNullConstraints(tableInfo, newTuple);
+
+        // TODO:  Check candidate key constraints on this table.
 
         // Check all the foreign keys on this table - make sure that the tuple
         // only contains values that appear in any referenced tables.
-        List<ForeignKeyColumnRefs> foreignKeys = tblSchema.getForeignKeys();
+        List<ForeignKeyColumnRefs> foreignKeys = schema.getForeignKeys();
         for (ForeignKeyColumnRefs foreignKey : foreignKeys)
-            checkReferencedTableForValue(tableInfo, foreignKey, tup);
+            checkReferencedTableForValue(tableInfo, foreignKey, newTuple);
 
         // Find out all the columns that have UNIQUE constraints
         // and find all of the created indices on these columns.
         // Call existsTuple with the indexInfo and tuple for each
         // of these indices (These indices should always exist)
-        List<KeyColumnRefs> candKeyList = tblSchema.getCandidateKeys();
+        List<KeyColumnRefs> candKeyList = schema.getCandidateKeys();
+
+        String idxName;
+        IndexInfo indexInfo;
 
         // Check primary key
-        KeyColumnRefs primaryKey = tblSchema.getPrimaryKey();
+        KeyColumnRefs primaryKey = schema.getPrimaryKey();
         if (primaryKey != null) {
             idxName = primaryKey.getIndexName();
             indexInfo = indexManager.openIndex(tableInfo, idxName);
 
-            if (containsTuple(indexInfo, tup)) {
+            if (containsTuple(indexInfo, newTuple)) {
                 throw new EventDispatchException(
                     "Cannot add tuple due to unique constraint.");
             }
@@ -106,21 +115,9 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
             idxName = keyColIdx.getIndexName();
             indexInfo = indexManager.openIndex(tableInfo, idxName);
 
-            if (containsTuple(indexInfo, tup)) {
+            if (containsTuple(indexInfo, newTuple)) {
                 throw new EventDispatchException(
                     "Cannot add tuple due to unique constraint.");
-            }
-        }
-
-        // Check for NOT NULL constraints
-        Set<Integer> notNullCols = tblSchema.getNotNull();
-        for (int notNullCol : notNullCols) {
-            logger.info(String.format("Checking NOT NULL constraint on " +
-                "column %d", notNullCol));
-            if (tup.isNullValue(notNullCol)) {
-                throw new EventDispatchException(
-                    "Tuple has NULL value for a NOT NULL  constrained column: " +
-                    tblSchema.getColumnInfo(notNullCol).toString());
             }
         }
     }
@@ -155,13 +152,24 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
     public void beforeRowUpdated(TableInfo tableInfo, Tuple oldTuple,
                                  Tuple newTuple) throws IOException {
 
+        TableSchema schema = tableInfo.getSchema();
+
+        // Check NOT NULL constraints first - they are cheapest.
+        checkNotNullConstraints(tableInfo, oldTuple);
+
+        // TODO:  Check candidate key constraints on this table.
+
+        // Check all the foreign keys on this table - make sure that the new
+        // version of the tuple only contains values that appear in any
+        // referenced tables.
+        List<ForeignKeyColumnRefs> foreignKeys = schema.getForeignKeys();
+        for (ForeignKeyColumnRefs foreignKey : foreignKeys)
+            checkReferencedTableForValue(tableInfo, foreignKey, newTuple);
+
         // Check if updating this tuple affects children tables via a foreign
         // key constraint.  Since the primary key is also a candidate key but
         // is stored separately, we check the PK first, and then iterate thru
         // all the candidate keys.
-
-        TableSchema schema = tableInfo.getSchema();
-
         try {
             KeyColumnRefs key = schema.getPrimaryKey();
             if (isTupleReferencedByFK(tableInfo, oldTuple, key))
@@ -177,13 +185,6 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
             throw new EventDispatchException(
                     "Couldn't perform ON UPDATE operations.", e);
         }
-
-        // Check all the foreign keys on this table - make sure that the new
-        // version of the tuple only contains values that appear in any
-        // referenced tables.
-        List<ForeignKeyColumnRefs> foreignKeys = schema.getForeignKeys();
-        for (ForeignKeyColumnRefs foreignKey : foreignKeys)
-            checkReferencedTableForValue(tableInfo, foreignKey, newTuple);
     }
 
     /**
@@ -245,6 +246,32 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
     public void afterRowDeleted(TableInfo tblFileInfo, Tuple oldValues)
             throws EventDispatchException {
         // Do nothing!
+    }
+
+
+    /**
+     * This helper function verifies that a tuple being added to a table
+     * satisfies all the NOT NULL constraints on the table.
+     *
+     * @param tableInfo the table that the tuple is being added to
+     * @param tuple the tuple being added to the table
+     * @throws ConstraintViolationException if the tuple has a NULL value for
+     *         any not-null columns
+     */
+    private void checkNotNullConstraints(TableInfo tableInfo, Tuple tuple) {
+        TableSchema schema = tableInfo.getSchema();
+        for (int notNullCol : schema.getNotNull()) {
+            logger.debug(String.format("Checking NOT NULL constraint on " +
+                "column %d", notNullCol));
+
+            if (tuple.isNullValue(notNullCol)) {
+                throw new ConstraintViolationException(
+                    "Cannot insert tuple " + tuple + " into table " +
+                    tableInfo.getTableName() + "; NOT NULL constraint on column " +
+                    schema.getColumnInfo(notNullCol).toString() +
+                    " would be violated");
+            }
+        }
     }
 
 
@@ -312,13 +339,13 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
 
 
     /**
-     * Checks if the specified tuple is specifically referenced by any of the
+     * Checks if the specified tuple is referenced by tuples in any of the
      * referencing tables associated with the tuple's table.  This is done by
      * examining the tuple in the context of a candidate key {@code key}, and
      * checking every foreign-key index that references the specified
      * candidate key.
      *
-     * @param tup the tuple we are testing to see if any other tables
+     * @param tuple the tuple we are testing to see if any other tables
      *        reference the specific tuple
      *
      * @param key the candidate key that holds on the input tuple {@code tup},
@@ -331,17 +358,11 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
      * @throws IOException if an IO error occurs while loading the referencing
      *         tables and their indexes
      */
-    private boolean isTupleReferencedByFK(TableInfo tblFileInfo, Tuple tup,
-                                          KeyColumnRefs key) throws IOException {
-        if (key == null)
-            return false;
+    private boolean isTupleReferencedByFK(TableInfo tableInfo, Tuple tuple,
+        KeyColumnRefs key) throws IOException {
 
-        IndexInfo indexInfo =
-                indexManager.openIndex(tblFileInfo, key.getIndexName());
-
+        // Examine each foreign key that references this key.
         List<KeyColumnRefs.FKReference> fkRefs = key.getReferencingIndexes();
-
-        // For each of the tables that reference this schema
         for (KeyColumnRefs.FKReference fkRef : fkRefs) {
             // Open the referencing table and the index for the foreign key
 
@@ -364,7 +385,7 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
                 new TupleLiteral(childTblInfo.getTupleFile().getSchema().numColumns());
             for (int i = 0; i < childIdx.size(); i++) {
                 probeTuple.setColumnValue(childIdxColumns[i],
-                        tup.getColumnValue(idxColumns[i]));
+                        tuple.getColumnValue(idxColumns[i]));
             }
 
             // Return true if the foreign-key index has a reference to
@@ -383,9 +404,9 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
      * executes that option.
      */
     private void applyOnDeleteEffects(KeyColumnRefs key,
-        TableInfo tblFileInfo, Tuple tup) throws IOException {
+        TableInfo tableInfo, Tuple tup) throws IOException {
 
-        String tableName = tblFileInfo.getTableName();
+        String tableName = tableInfo.getTableName();
         List<KeyColumnRefs.FKReference> fkRefs = key.getReferencingIndexes();
 
         // Iterate through all foreign keys that reference this table.  Each
@@ -406,21 +427,14 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
 
             // If delete option is RESTRICT, throw an error.
             if (fk.getOnDeleteOption() == ForeignKeyValueChangeOption.RESTRICT) {
-                // Make sure we add the key back into the parent index,
-                // since we arent going to be changing the table.
-                // This is because we deleted the key from the index
-                // in the RowEventListener before calling deleteTuple().
-                // TODO:  VERIFY THIS! -- Donnie
-                /*
-                IndexInfo parentIdxFileInfo = storageManager.openIndex(
-                        tblFileInfo, key.getIndexName());
-                IIndexManager parentIdxMgr = parentIdxFileInfo.getIndexManager();
-                parentIdxMgr.addTuple(parentIdxFileInfo, (PageTuple) tup);
-                */
+                // Note that the index updater will have already removed the
+                // tuple from the table's indexes at this point.  But, when we
+                // throw an exception here, this will terminate the current
+                // transaction and those index changes will be rolled back.
 
-                throw new IOException("Cannot drop tuple on table " +
-                    tableName + " due to an ON DELETE RESTRICT " +
-                    "constraint with one of its child tables");
+                throw new ConstraintViolationException("Cannot delete tuple" +
+                    " on table " + tableName + " due to an ON DELETE " +
+                    "RESTRICT constraint from one of its referencing tables");
             }
 
             String childIdxName = fkRef.indexName;
@@ -439,7 +453,7 @@ public class DatabaseConstraintEnforcer implements RowEventListener {
                 }
                 catch (ExecutionException e) {
                     throw new IOException("Error trying to delete tuples " +
-                            "from children tables of table " + tableName);
+                            "from tables that reference table " + tableName);
                 }
             }
             else if (fk.getOnDeleteOption() == ForeignKeyValueChangeOption.SET_NULL) {

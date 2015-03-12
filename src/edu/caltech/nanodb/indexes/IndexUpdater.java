@@ -92,7 +92,6 @@ public class IndexUpdater implements RowEventListener {
 
     @Override
     public void beforeRowDeleted(TableInfo tblFileInfo, Tuple oldTuple) {
-
         if (!(oldTuple instanceof PageTuple)) {
             throw new IllegalArgumentException(
                 "oldTuple must be castable to PageTuple");

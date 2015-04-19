@@ -23,6 +23,10 @@ public enum DBFileType {
      */
     BTREE_TUPLE_FILE(2),
 
+    /**
+     * Represents a bitmap index file on an attribute of a table.
+     */
+    BITMAP_INDEX_FILE(10),
 
     /**
      * Represents a transaction-state file used for write-ahead logging and
@@ -35,6 +39,7 @@ public enum DBFileType {
      * recovery.
      */
     WRITE_AHEAD_LOG_FILE(21);
+
 
 
     private int id;

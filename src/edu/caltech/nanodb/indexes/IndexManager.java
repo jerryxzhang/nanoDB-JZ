@@ -8,7 +8,6 @@ import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.TableConstraintType;
 import edu.caltech.nanodb.relations.TableInfo;
 
-
 /**
  * This interface specifies all operations that are necessary for supporting
  * indexes in NanoDB.  Indexes are implemented as

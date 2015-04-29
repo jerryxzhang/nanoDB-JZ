@@ -37,6 +37,7 @@ tokens {
   ASC         = "asc";
   BEGIN       = "begin";
   BETWEEN     = "between";
+  BITMAP      = "bitmap";
   BY          = "by";
   CASCADE     = "cascade";
   COLUMN      = "column";
@@ -425,15 +426,16 @@ create_index returns [CreateIndexCommand c]
     c = null;
     String idxType = null;
     boolean unique = false;
+    boolean bitmap = false;
     String idxName = null;
     String tblName = null;
     String colName = null;
     CommandProperties p = null;
   }
   :
-  CREATE ( UNIQUE { unique = true; } )? INDEX ( idxName=dbobj_ident )?
+  CREATE ( UNIQUE { unique = true; } )? ( BITMAP { bitmap = true; } )? INDEX ( idxName=dbobj_ident )?
   ON tblName=dbobj_ident
-  { c = new CreateIndexCommand(idxName, tblName, unique); }
+  { c = new CreateIndexCommand(idxName, tblName, unique, bitmap); }
   LPAREN colName=dbobj_ident { c.addColumn(colName); }
          ( COMMA colName=dbobj_ident { c.addColumn(colName); } )* RPAREN
   ( p=cmd_properties { c.setProperties(p); } )?

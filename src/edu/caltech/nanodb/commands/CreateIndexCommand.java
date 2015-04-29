@@ -37,6 +37,7 @@ public class CreateIndexCommand extends Command {
      */
     private boolean unique;
 
+    private boolean bitmap;
 
     /** The name of the table that the index is built against. */
     private String tableName;
@@ -55,7 +56,7 @@ public class CreateIndexCommand extends Command {
 
 
     public CreateIndexCommand(String indexName, String tableName,
-                              boolean unique) {
+                              boolean unique, boolean bitmap) {
         super(Type.DDL);
 
         if (tableName == null)
@@ -64,6 +65,7 @@ public class CreateIndexCommand extends Command {
         this.indexName = indexName;
         this.tableName = tableName;
         this.unique = unique;
+        this.bitmap = bitmap;
     }
 
 
@@ -124,7 +126,12 @@ public class CreateIndexCommand extends Command {
                 colRefs = new ColumnRefs(indexName, cols);
             }
 
-            indexManager.addIndexToTable(tableInfo, colRefs);
+            if (bitmap) {
+                logger.info("MAKING A BITMAP WOOO");
+                // TODO
+            } else {
+                indexManager.addIndexToTable(tableInfo, colRefs);
+            }
         }
         catch (IOException e) {
             throw new ExecutionException(String.format(

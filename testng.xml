@@ -6,6 +6,8 @@
       <class name="edu.caltech.test.nanodb.indexes.bitmap.TestBitmapStorage">
         <methods>
           <include name="testBitmapReadWrite" />
+          <include name="testValueSet" />
+          <include name="testPointerList" />
         </methods>
       </class>
     </classes>

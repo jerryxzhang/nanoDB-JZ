@@ -44,7 +44,7 @@ public class Bitmap {
     }
 
     public String getAttribute() {
-        return parent.attribute;
+        return parent.getAttribute();
     }
 
     public String getName() {

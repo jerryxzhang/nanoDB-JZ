@@ -1,6 +1,8 @@
 package edu.caltech.nanodb.relations;
 
 
+import edu.caltech.nanodb.storage.bitmapfile.BitmapIndex;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,8 +53,11 @@ public class TableSchema extends Schema {
      * table, including those for candidate keys and the primary key.
      */
     private HashMap<String, ColumnRefs> indexes =
-        new HashMap<String, ColumnRefs>();
+            new HashMap<String, ColumnRefs>();
 
+    // TODO: Work on this
+    private HashMap<String, BitmapIndex> bitmapIndexes =
+            new HashMap<String, BitmapIndex>();
 
     /**
      * Adds a column with given index to list of NOT NULL constrained columns.
@@ -241,7 +246,7 @@ public class TableSchema extends Schema {
 
 
     public List<KeyColumnRefs> getAllKeysOnColumns(ColumnRefs k) {
-        ArrayList<KeyColumnRefs> keys = new ArrayList<>();
+        ArrayList<KeyColumnRefs> keys = new ArrayList<KeyColumnRefs>();
 
         if (primaryKey != null && primaryKey.hasSameColumns(k))
             keys.add(primaryKey);

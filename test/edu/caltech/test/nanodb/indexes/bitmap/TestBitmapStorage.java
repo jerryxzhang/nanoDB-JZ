@@ -1,9 +1,9 @@
 package edu.caltech.test.nanodb.indexes.bitmap;
 
 
+import edu.caltech.nanodb.storage.FilePointer;
 import edu.caltech.nanodb.storage.StorageManager;
-import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
-import edu.caltech.nanodb.storage.bitmapfile.BitmapFileManager;
+import edu.caltech.nanodb.storage.bitmapfile.*;
 import edu.caltech.test.nanodb.sql.SqlTestCase;
 import org.apache.log4j.Logger;
 import org.testng.annotations.Test;
@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
- * Created by j on 4/18/2015.
+ * These tests test storage aspects of bitmap indexes i.e. making sure that all aspects of
+ * bitmap indexes read and write correctly.
  */
 @Test
 public class TestBitmapStorage extends SqlTestCase {
@@ -23,6 +24,58 @@ public class TestBitmapStorage extends SqlTestCase {
 
     public TestBitmapStorage() {
         super(null);
+    }
+
+    /**
+     * Creates a PointerList, adds random Pointers and checks for integrity
+     */
+    public void testPointerList() throws Throwable {
+        StorageManager storageManager = server.getStorageManager();
+        String filename = "POINTERLIST";
+
+        PointerList list = new PointerList(filename, storageManager);
+        list.createFile();
+
+        Random rand = new Random();
+        for (int i = 0; i < 10000; i++) {
+            list.addPointer(new FilePointer(rand.nextInt(65535), rand.nextInt(65535)));
+        }
+
+        storageManager.getBufferManager().flushAll();
+        assert(storageManager.getFileManager().fileExists(filename));
+
+        PointerList list2 = new PointerList(filename, storageManager);
+        list2.loadFile();
+
+        for (int i = 0; i < 10000; i++) {
+            assert(list.getPointer(i).equals(list2.getPointer(i)));
+        }
+    }
+
+    /**
+     * This test creates a ValueSet, adds values to it, writes it to disk,
+     * and checks if the value are intact.
+     */
+    public void testValueSet() throws Throwable {
+        StorageManager storageManager = server.getStorageManager();
+        String filename = "VALUESET";
+
+        ValueSet set = new ValueSet(filename, storageManager);
+        set.createFile();
+
+        set.addValue("Value 1 fdsklahferoqgherpqgodfvnhaknvdq[ew");
+        set.addValue("Value 2 gsqitqrppqtpqwetqwet");
+        set.addValue("Value 3 rewqt4ui23t904u-f9234jfut0");
+        set.addValue("Value 4 qqewqrghreoih34-g4389-2-4143");
+        set.addValue("Value 5 32vt43720cthuoasfhdecqwohertumq0980");
+
+        storageManager.getBufferManager().flushAll();
+        assert(storageManager.getFileManager().fileExists(filename));
+
+        ValueSet set2 = new ValueSet(filename, storageManager);
+        set2.loadFile();
+
+        assert(set.getValues().containsAll(set2.getValues()));
     }
 
     /**
@@ -34,14 +87,14 @@ public class TestBitmapStorage extends SqlTestCase {
         StorageManager storageManager = server.getStorageManager();
         BitmapFileManager bitmapFileManager = new BitmapFileManager(storageManager);
 
-        int mapsize = 10;
+        int mapsize = 10000;
         String filename = "TESTBITMAP";
         Bitmap map = bitmapFileManager.createBitmapFile(filename, null);
 
         ArrayList<Integer> ints = new ArrayList<Integer>();
         Random rand = new Random();
         for (int i = 0; i < mapsize; i++) {
-            int r = rand.nextInt(10000);
+            int r = rand.nextInt(100000);
             if (!ints.contains(r)) {
                 ints.add(r);
                 map.set(r);
@@ -55,12 +108,11 @@ public class TestBitmapStorage extends SqlTestCase {
 
         Bitmap map2 = bitmapFileManager.loadBitmapFile(filename, null);
 
-        logger.info(Arrays.toString(map2.save()));
-        logger.info(Arrays.toString(map2.toArray()));
-        logger.info(ints);
-
-        for (int i = 0; i < map2.toArray().length; i++) {
-            assert(ints.contains(map2.toArray()[i]));
+        int[] map2ints = map2.toArray();
+        for (int i = 0; i < map2ints.length; i++) {
+            assert(ints.contains(map2ints[i]));
         }
     }
+
+
 }

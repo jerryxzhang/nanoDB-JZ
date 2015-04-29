@@ -546,8 +546,8 @@ public class BufferManager {
         int pageNo = dbPage.getPageNo();
         DBPageID pageID = new DBPageID(dbPage);
         if (dbPage.getPinCount() > 0) {
-            logger.warn(String.format("DBPage %d is being invalidated, but " +
-                "it has a pin-count of %d", pageNo, dbPage.getPinCount()));
+            //logger.warn(String.format("DBPage %d is being invalidated, but " +
+              //  "it has a pin-count of %d", pageNo, dbPage.getPinCount()));
         }
 
         for (int sessionID : sessionPinCounts.keySet()) {
@@ -556,9 +556,9 @@ public class BufferManager {
 
             SessionPinCount spc = pinnedBySession.remove(pageID);
             if (spc != null) {
-                logger.warn(String.format("DBPage %d is being invalidated, " +
-                    "but session %d has pinned it %d times", pageNo, sessionID,
-                    spc.pinCount));
+                //logger.warn(String.format("DBPage %d is being invalidated, " +
+                  //  "but session %d has pinned it %d times", pageNo, sessionID,
+                    //spc.pinCount));
             }
         }
     }

@@ -7,7 +7,11 @@
         <methods>
           <include name="testBitmapReadWrite" />
           <include name="testValueSet" />
-          <include name="testPointerList" />
+        </methods>
+      </class>
+      <class name="edu.caltech.test.nanodb.indexes.bitmap.TestBitmapIndexScanNode">
+        <methods>
+          <include name="testSimpleEquality" />
         </methods>
       </class>
     </classes>

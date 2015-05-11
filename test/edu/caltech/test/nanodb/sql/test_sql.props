@@ -2,6 +2,19 @@
 # SIMPLE SELECTS AND PROJECTS
 #
 
+# This setup SQL is used for bitmap indexes
+setup_testBitmapIndexes = \
+    CREATE TABLE test_bitmap_indexes ( \
+        a INTEGER, \
+        b INTEGER \
+    ); \
+    INSERT INTO test_bitmap_indexes VALUES ( 0, 0 ); \
+    INSERT INTO test_bitmap_indexes VALUES ( 1, 10 ); \
+    INSERT INTO test_bitmap_indexes VALUES ( 2, 20 ); \
+    INSERT INTO test_bitmap_indexes VALUES ( 3, 30 ); \
+    INSERT INTO test_bitmap_indexes VALUES ( 4, 10 ); \
+    CREATE BITMAP INDEX ON test_bitmap_indexes( b );
+
 # This setup SQL is used for the simple-selects test case
 setup_testSimpleSelects = \
     CREATE TABLE test_simple_selects ( \

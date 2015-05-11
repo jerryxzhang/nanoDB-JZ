@@ -2,15 +2,9 @@ package edu.caltech.nanodb.qeval;
 
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexScanNode;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
@@ -261,7 +255,6 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
         ArrayList<FromClause> leafFromClauses = new ArrayList<FromClause>();
 
         collectDetails(fromClause, conjuncts, leafFromClauses);
-
         logger.debug("Making join-plan for " + fromClause);
         logger.debug("    Collected conjuncts:  " + conjuncts);
         logger.debug("    Collected FROM-clauses:  " + leafFromClauses);
@@ -431,6 +424,16 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
     private PlanNode makeLeafPlan(FromClause fromClause,
         Collection<Expression> conjuncts, HashSet<Expression> leafConjuncts)
         throws IOException {
+
+        Iterator<Expression> iter = conjuncts.iterator();
+        while (iter.hasNext()) {
+            Expression e = iter.next();
+            BitmapIndexScanNode bitmapIndexScanNode = new BitmapIndexScanNode(e,
+                    storageManager.getTableManager().openTable(fromClause.getTableName()),
+                    storageManager.getBitmapIndexManager());
+            bitmapIndexScanNode.processExpression(e);
+
+        }
 
         PlanNode plan;
 

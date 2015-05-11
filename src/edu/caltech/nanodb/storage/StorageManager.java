@@ -6,6 +6,9 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
+import edu.caltech.nanodb.storage.bitmapfile.BitmapFileManager;
+import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexManager;
+import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexUpdater;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.TypeCastException;
@@ -182,6 +185,8 @@ public class StorageManager {
 
     private IndexManager indexManager;
 
+    private BitmapIndexManager bitmapIndexManager;
+
 
     /**
      * This mapping is used to keep track of the tuple-file managers for all
@@ -256,6 +261,7 @@ public class StorageManager {
 
         tableManager = new IndexedTableManager(this);
         indexManager = new BasicIndexManager(this);
+        bitmapIndexManager = new BitmapIndexManager(this);
 
         EventDispatcher eventDispatcher = EventDispatcher.getInstance();
 
@@ -265,6 +271,9 @@ public class StorageManager {
 
             // Register the event-handler that updates indexes when tables change.
             eventDispatcher.addRowEventListener(new IndexUpdater(this));
+
+            // Register the handler that updates bitmap indexes
+            eventDispatcher.addRowEventListener(new BitmapIndexUpdater(this));
         }
 
         initialized = true;
@@ -383,6 +392,9 @@ public class StorageManager {
         return indexManager;
     }
 
+    public BitmapIndexManager getBitmapIndexManager() {
+        return bitmapIndexManager;
+    }
 
     /**
      * Returns the tuple-file manager for the specified file type.

@@ -191,6 +191,8 @@ public class SchemaWriter {
         // Write all details of indexes on this table:
         writeIndexes(schema, pgWriter);
 
+        writeBitmapIndexes(schema, pgWriter);
+
         // Report how much space was used by schema info.
         if (logger.isDebugEnabled()) {
             int size = pgWriter.getPosition() - startPosition;
@@ -487,6 +489,8 @@ public class SchemaWriter {
 
         readIndexes(pgReader, schema);
 
+        readBitmapIndexes(pgReader, schema);
+
         logger.info("Completed schema:  " + schema);
         return schema;
     }
@@ -734,7 +738,6 @@ public class SchemaWriter {
             schema.addIndex(readIndex(pgReader));
     }
 
-
     /**
      * This helper function reads an index to the table's schema stored
      * in the header page.
@@ -757,6 +760,43 @@ public class SchemaWriter {
         for (int i = 0; i < idxSize; i++)
             idxCols[i] = pgReader.readUnsignedByte();
 
+        // This should always be specified.
+        String indexName = pgReader.readVarString255();
+
+        return new ColumnRefs(indexName, idxCols);
+    }
+
+    protected void writeBitmapIndexes(TableSchema schema, PageWriter pgWriter) {
+        // Count how many indexes we have to write.
+        int numIndexes = schema.getBitmapIndexes().size();
+
+        logger.debug("Writing " + numIndexes + " bitmap indexes");
+        pgWriter.writeByte(numIndexes);
+
+        Map<String, ColumnRefs> idxMap = schema.getBitmapIndexes();
+        for (String indexName : idxMap.keySet())
+            writeBitmapIndex(pgWriter, idxMap.get(indexName));
+    }
+
+    protected void writeBitmapIndex(PageWriter hpWriter, ColumnRefs idx) {
+        hpWriter.writeByte(idx.getCol(0));
+        // This should always be specified.
+        hpWriter.writeVarString255(idx.getIndexName());
+    }
+
+    protected void readBitmapIndexes(PageReader pgReader, TableSchema schema) {
+        int numIndexes = pgReader.readUnsignedByte();
+        logger.debug("Reading " + numIndexes + " bitmap indexes");
+        for (int i = 0; i < numIndexes; i++)
+            schema.addBitmapIndex(readBitmapIndex(pgReader));
+    }
+
+    protected ColumnRefs readBitmapIndex(PageReader pgReader) {
+
+        logger.debug(" * Reading bitmap index");
+
+        int idxCol = pgReader.readUnsignedByte();
+        int[] idxCols = {idxCol};
         // This should always be specified.
         String indexName = pgReader.readVarString255();
 

@@ -35,7 +35,7 @@ public interface BitSet {
     public int size();
 
     /**
-     * Returns the number of set bits at smaller or equal indexes to x
+     * Returns the number of set bits at smaller or equal indices to x
      */
     public int rank(int x);
 

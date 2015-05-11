@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexManager;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.indexes.IndexManager;
@@ -99,6 +100,7 @@ public class CreateIndexCommand extends Command {
 
         TableManager tableManager = storageManager.getTableManager();
         IndexManager indexManager = storageManager.getIndexManager();
+        BitmapIndexManager bitmapIndexManager = storageManager.getBitmapIndexManager();
 
         // Open the table and get the schema for the table.
         logger.debug(String.format("Opening table %s to retrieve schema",
@@ -127,8 +129,7 @@ public class CreateIndexCommand extends Command {
             }
 
             if (bitmap) {
-                logger.info("MAKING A BITMAP WOOO");
-                // TODO
+                bitmapIndexManager.createBitmapIndex(tableInfo, colRefs);
             } else {
                 indexManager.addIndexToTable(tableInfo, colRefs);
             }

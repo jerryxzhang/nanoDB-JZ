@@ -27,32 +27,6 @@ public class TestBitmapStorage extends SqlTestCase {
     }
 
     /**
-     * Creates a PointerList, adds random Pointers and checks for integrity
-     */
-    public void testPointerList() throws Throwable {
-        StorageManager storageManager = server.getStorageManager();
-        String filename = "POINTERLIST";
-
-        PointerList list = new PointerList(filename, storageManager);
-        list.createFile();
-
-        Random rand = new Random();
-        for (int i = 0; i < 10000; i++) {
-            list.addPointer(new FilePointer(rand.nextInt(65535), rand.nextInt(65535)));
-        }
-
-        storageManager.getBufferManager().flushAll();
-        assert(storageManager.getFileManager().fileExists(filename));
-
-        PointerList list2 = new PointerList(filename, storageManager);
-        list2.loadFile();
-
-        for (int i = 0; i < 10000; i++) {
-            assert(list.getPointer(i).equals(list2.getPointer(i)));
-        }
-    }
-
-    /**
      * This test creates a ValueSet, adds values to it, writes it to disk,
      * and checks if the value are intact.
      */

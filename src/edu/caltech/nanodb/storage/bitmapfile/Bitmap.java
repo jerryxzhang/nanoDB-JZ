@@ -73,6 +73,10 @@ public class Bitmap {
         return this.bitset.cardinality();
     }
 
+    public int rank(int loc) {
+        return this.bitset.rank(loc);
+    }
+
     /**
      * Set a bit as the given position. If this is a disk backed bitmap, make the same change to
      * the file by writing the bitmap to file.
@@ -103,8 +107,6 @@ public class Bitmap {
      * not modified.
      */
     public static Bitmap and(Bitmap m1, Bitmap m2) {
-        if (m1.parent != m2.parent)
-            throw new IllegalArgumentException("Can't operate on bitmaps from different indexes");
         Bitmap ret = m1.clone();
         ret.bitset.and(m2.bitset);
         return ret;
@@ -116,10 +118,14 @@ public class Bitmap {
      * not modified.
      */
     public static Bitmap or(Bitmap m1, Bitmap m2) {
-        if (m1.parent != m2.parent)
-            throw new IllegalArgumentException("Can't operate on bitmaps from different indexes");
         Bitmap ret = m1.clone();
         ret.bitset.or(m2.bitset);
+        return ret;
+    }
+
+    public static Bitmap xor(Bitmap m1, Bitmap m2) {
+        Bitmap ret = m1.clone();
+        ret.bitset.xor(m2.bitset);
         return ret;
     }
 }

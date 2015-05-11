@@ -90,8 +90,18 @@ public class ValueSet {
     }
 
     public void removeValue(String value) {
-        // No way to do this without scanning through the entire file
-        throw new UnsupportedOperationException("Can't delete arbitrary values yet");
+        values.remove(value);
+        try {
+            Tuple tuple = file.getFirstTuple();
+            while (true) {
+                if (((String) tuple.getColumnValue(0)).equals(value)) file.deleteTuple(tuple);
+
+                tuple = file.getNextTuple(tuple);
+                if (tuple == null) break;
+            }
+        } catch (IOException e) {
+            logger.error("Couldn't load ValueSet " + filename);
+        }
     }
 
     /**

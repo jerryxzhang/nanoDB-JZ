@@ -55,9 +55,8 @@ public class TableSchema extends Schema {
     private HashMap<String, ColumnRefs> indexes =
             new HashMap<String, ColumnRefs>();
 
-    // TODO: Work on this
-    private HashMap<String, BitmapIndex> bitmapIndexes =
-            new HashMap<String, BitmapIndex>();
+    private HashMap<String, ColumnRefs> bitmapIndexes =
+            new HashMap<String, ColumnRefs>();
 
     /**
      * Adds a column with given index to list of NOT NULL constrained columns.
@@ -161,6 +160,17 @@ public class TableSchema extends Schema {
         indexes.put(idx.getIndexName(), idx);
     }
 
+    public Map<String, ColumnRefs> getBitmapIndexes() {
+        return Collections.unmodifiableMap(bitmapIndexes);
+    }
+
+    public void addBitmapIndex(ColumnRefs idx) {
+        bitmapIndexes.put(idx.getIndexName(), idx);
+    }
+
+    public void dropBitmapIndex(String idxName) {
+        bitmapIndexes.remove(idxName);
+    }
 
     public void addRefTable(String tblName, String idxName,
         int[] referencedColumns) {

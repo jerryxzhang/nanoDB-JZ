@@ -1,13 +1,16 @@
-package edu.caltech.nanodb.storage.bitmapfile;
+package edu.caltech.nanodb.plans;
 
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import edu.caltech.nanodb.expressions.*;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.SelectNode;
+import edu.caltech.nanodb.qeval.PlanCost;
 import edu.caltech.nanodb.relations.TableInfo;
+import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndex;
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndexManager;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.qeval.TableStats;
@@ -48,7 +51,9 @@ public class BitmapIndexScanNode extends SelectNode {
 
     /**
      * Construct an index scan node that performs an equality-based lookup on
-     * an index.
+     * an index. The given predicate must be already checked to ensure it can
+     * be solved with bitmap indexes. A NULL predicate simply selects all
+     * tuples in the table.
      */
     public BitmapIndexScanNode(Expression predicate, TableInfo table, BitmapIndexManager manager) {
         super(predicate);
@@ -56,13 +61,31 @@ public class BitmapIndexScanNode extends SelectNode {
         this.tableTupleFile = table.getTupleFile();
         this.bitmapIndexManager = manager;
 
-        // Evaluate the expression into a bitmap and pull file pointers from it1
-        Bitmap bitmap = processExpression(predicate);
+        setPredicate(predicate, table);
+        logger.info("Used a BitmapIndexScan to pull " + pointers.length + " values from table " + tableInfo.getTableName());
+    }
+
+    /**
+     * Sets the predicate to a new value, and recalculates the tuple results. Also resets the node.
+     */
+    public void setPredicate(Expression predicate, TableInfo table) {
+        if (currentTuple != null)
+            logger.error("ERROR setting a predicate when all tuples are not finished");
+
+        this.predicate = predicate;
+        Bitmap bitmap = null;
+        // Evaluate the expression into a bitmap and pull file pointers from it
+        if (predicate == null) {
+            bitmap = bitmapIndexManager.getExistenceBitmap(table);
+        } else {
+            bitmap = processExpression(predicate);
+        }
         pointers = new FilePointer[bitmap.cardinality()];
         int[] indexes = bitmap.toArray();
         for (int i = 0; i < pointers.length; i++) {
             pointers[i] = BitmapIndex.getPointer(indexes[i]);
         }
+        initialize();
     }
 
     /**
@@ -78,7 +101,6 @@ public class BitmapIndexScanNode extends SelectNode {
      * </ul>
      */
     public Bitmap processExpression(Expression expression) {
-        logger.info(expression);
         Bitmap ret;
         if (expression instanceof BooleanOperator) {
             // If the expression is an and, or, or not then break it down to its components
@@ -146,6 +168,102 @@ public class BitmapIndexScanNode extends SelectNode {
     }
 
     /**
+     * Returns true if the given expression is in a format that can be solved by bitmap indexes, and false
+     * in other cases.
+     * <p>
+     * So far only the following can be processed by Bitmap indexes:
+     * <ul>
+     *     <li>AND, OR, and NOT expression composed of expressions that can be evaluated
+     *     by bitmaps</li>
+     *     <li>An = or != expression comparing a column value to a literal value where
+     *     there exists a bitmap index on the column</li>
+     * </ul>
+     */
+    public static boolean canProcessExpression(Expression expression, BitmapIndexManager bitmapIndexManager, TableInfo tableInfo) {
+        boolean ret = true;
+        if (expression instanceof BooleanOperator) {
+            // If the expression is an and, or, or not then break it down to its components
+            BooleanOperator booleanOperator = (BooleanOperator) expression;
+            int numTerms = booleanOperator.getNumTerms();
+            switch (booleanOperator.getType()) {
+                case AND_EXPR:
+                    for (int i = 0; i < numTerms; i++)
+                        ret &= canProcessExpression(booleanOperator.getTerm(i), bitmapIndexManager, tableInfo);
+                    break;
+                case OR_EXPR:
+                    for (int i = 0; i < numTerms; i++)
+                        ret &= canProcessExpression(booleanOperator.getTerm(i), bitmapIndexManager, tableInfo);
+                    break;
+                case NOT_EXPR:
+                    ret &= canProcessExpression(booleanOperator.getTerm(0), bitmapIndexManager, tableInfo);
+                    break;
+                default:
+                    ret = false;
+            }
+        } else if (expression instanceof CompareOperator) {
+            // Check whether expression is an equality with a literal
+            CompareOperator compareOperator = (CompareOperator) expression;
+            Expression left = compareOperator.getLeftExpression();
+            Expression right = compareOperator.getRightExpression();
+
+            if (left instanceof LiteralValue && right instanceof ColumnValue) {
+                // Swap left and right
+                Expression temp = right;
+                right = left;
+                left = temp;
+            }
+
+            if (!(right instanceof LiteralValue && left instanceof ColumnValue)) {
+                ret = false;
+            }
+
+            // Check if an index actually exists on this column
+            String columnName = ((ColumnValue) left).getColumnName().getColumnName();
+            if (!bitmapIndexManager.bitmapIndexExists(tableInfo.getSchema(), columnName)) {
+                ret = false;
+            }
+
+            switch (compareOperator.getType()) {
+                case EQUALS:
+                    break;
+                case NOT_EQUALS:
+                    break;
+                default:
+                    ret = false;
+            }
+        } else {
+            ret = false;
+        }
+        return ret;
+    }
+
+    /**
+     * Check if a predicate can be partially solved with bitmap indexes. This is only the case
+     * if the predicate is a boolean AND expression, and at least one of the subexpressions
+     * can be solved with bitmap indexes. The clauses that can be used with bitmaps
+     * are put in the evaluated set.
+     */
+    public static boolean canSplitExpression(Expression expression, BitmapIndexManager bitmapIndexManager, TableInfo tableInfo, Set<Expression> evaluated) {
+        if (expression instanceof BooleanOperator) {
+            BooleanOperator booleanOperator = (BooleanOperator) expression;
+            int numTerms = booleanOperator.getNumTerms();
+            switch (booleanOperator.getType()) {
+                case AND_EXPR:
+                    for (int i = 0; i < numTerms; i++) {
+                        if (canProcessExpression(booleanOperator.getTerm(i), bitmapIndexManager, tableInfo)) {
+                            evaluated.add(booleanOperator.getTerm(i));
+                        }
+                    }
+                    return (evaluated.size() > 0);
+                default:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+
+    /**
      * Returns true if the passed-in object is a <tt>BitmapIndexScanNode</tt> with
      * the same predicate and table.
      *
@@ -177,7 +295,7 @@ public class BitmapIndexScanNode extends SelectNode {
 
 
     /**
-     * Creates a copy of this simple filter node node and its subtree.  This
+     * Creates a copy of this node.  This
      * method is used by {@link PlanNode#duplicate} to copy a plan tree.
      */
     @Override
@@ -236,14 +354,12 @@ public class BitmapIndexScanNode extends SelectNode {
 
         schema = tableTupleFile.getSchema();
 
-        // TODO:  We should also update the table statistics based on what the
-        //        index scan is going to do, but that's too complicated, so
-        //        we'll leave them unchanged for now.
         TableStats tableStats = tableTupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
-        // TODO:  Cost the plan node
-        cost = null;
+        // A simple costing
+        cost = new PlanCost(size(), tableStats.avgTupleSize,
+                tableStats.numTuples, tableStats.numDataPages);
     }
 
     @Override
@@ -281,6 +397,12 @@ public class BitmapIndexScanNode extends SelectNode {
         // Nothing to do!
     }
 
+    /**
+     * Return the number of tuples in the result.
+     */
+    public int size() {
+        return pointers.length;
+    }
 
     public void markCurrentPosition() {
         logger.debug("Marking current position in tuple-stream.");

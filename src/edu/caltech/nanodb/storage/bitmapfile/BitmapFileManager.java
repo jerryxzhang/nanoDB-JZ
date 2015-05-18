@@ -3,6 +3,7 @@ package edu.caltech.nanodb.storage.bitmapfile;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndex;
 import edu.caltech.nanodb.storage.*;
 import org.apache.log4j.Logger;
 

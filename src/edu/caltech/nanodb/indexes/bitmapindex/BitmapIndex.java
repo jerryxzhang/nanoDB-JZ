@@ -1,12 +1,11 @@
-package edu.caltech.nanodb.storage.bitmapfile;
+package edu.caltech.nanodb.indexes.bitmapindex;
 
 import edu.caltech.nanodb.relations.TableInfo;
-import edu.caltech.nanodb.relations.TableSchema;
-import edu.caltech.nanodb.relations.Tuple;
 import edu.caltech.nanodb.storage.*;
+import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
+import edu.caltech.nanodb.storage.bitmapfile.ValueSet;
 import edu.caltech.nanodb.storage.heapfile.HeapFilePageTuple;
 import edu.caltech.nanodb.storage.heapfile.HeapTupleFile;
-import edu.caltech.nanodb.storage.heapfile.HeapTupleFileManager;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -64,7 +63,6 @@ public class BitmapIndex {
 
         while (true) {
             if (tuple == null) break;
-
             int locationBit = getIndex(tuple.getExternalReference());
 
             // Set the existence bit
@@ -126,7 +124,7 @@ public class BitmapIndex {
 
         // Not strictly necessary to unset here, but it lets us check if there are no values left
         // this.valueBitmaps.get(value).unset(location);
-        // if there are no values left, remove this bitmap and remove the value from valuelist
+        // TODO ?? if there are no values left, remove this bitmap and remove the value from valuelist
     }
 
     /**
@@ -203,6 +201,19 @@ public class BitmapIndex {
 
     public Bitmap getExistence() {
         return existence;
+    }
+
+    /**
+     * Returns the number of bytes the entire index takes up on disk, at minimum. This does not take
+     * into account whatever extra space DBFiles use. For testing only.
+     */
+    public int size() {
+        int ret = existence.save().length;
+        Iterator<String> iter = valueBitmaps.keySet().iterator();
+        while (iter.hasNext()) {
+            ret += getBitmap(iter.next()).save().length;
+        }
+        return ret;
     }
 
     public static String getExistenceBitmapName(String table, String attribute) {

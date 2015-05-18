@@ -7,7 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexManager;
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndexManager;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.indexes.IndexManager;

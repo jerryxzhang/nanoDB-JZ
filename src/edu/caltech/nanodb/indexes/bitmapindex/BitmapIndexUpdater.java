@@ -1,4 +1,4 @@
-package edu.caltech.nanodb.storage.bitmapfile;
+package edu.caltech.nanodb.indexes.bitmapindex;
 
 import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.TableInfo;

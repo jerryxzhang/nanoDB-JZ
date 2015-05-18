@@ -1,9 +1,11 @@
-package edu.caltech.nanodb.storage.bitmapfile;
+package edu.caltech.nanodb.indexes.bitmapindex;
 
 import edu.caltech.nanodb.relations.ColumnRefs;
 import edu.caltech.nanodb.relations.TableInfo;
 import edu.caltech.nanodb.relations.TableSchema;
 import edu.caltech.nanodb.storage.StorageManager;
+import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
+import edu.caltech.nanodb.storage.bitmapfile.BitmapFileManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
@@ -11,7 +13,8 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Handles creating and opening bitmap indexes.
+ * Handles creating and opening bitmap indexes, as well as some other simple operations on
+ * bitmap indexes.
  */
 public class BitmapIndexManager {
 
@@ -57,9 +60,13 @@ public class BitmapIndexManager {
         } catch (IOException e) {
             logger.error("Failed to create new bitmap index " + indexName);
         }
+        logger.info("Successfully created bitmap index on " + tableInfo.getTableName() + " : " + attribute);
         return bitmapIndex;
     }
 
+    /**
+     * Check whether a bitmap index exists for a given attribute
+     */
     public boolean bitmapIndexExists(TableSchema schema, String attribute) {
         int index = schema.getColumnIndex(attribute);
         Iterator<ColumnRefs> iter = schema.getBitmapIndexes().values().iterator();
@@ -69,10 +76,17 @@ public class BitmapIndexManager {
         return false;
     }
 
+    /**
+     * Drops a bitmap index
+     */
     public void dropBitmapIndex(TableInfo tableInfo, String attribute) {
-
+        // TODO Can't drop indexes yet
     }
 
+    /**
+     * Get the existence bitmap for a table. This bitmap can come from any of the bitmap indexes
+     * on the table since they should all be the same
+     */
     public Bitmap getExistenceBitmap(TableInfo table) {
         Map<String, ColumnRefs> bitmaps = table.getSchema().getBitmapIndexes();
         if (bitmaps.size() == 0) throw new IllegalArgumentException("No bitmaps on this table");

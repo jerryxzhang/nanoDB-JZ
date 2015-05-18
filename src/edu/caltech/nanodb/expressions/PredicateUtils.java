@@ -191,4 +191,56 @@ public class PredicateUtils {
             }
         }
     }
+
+    /**
+     * Given an expression and an environment, return a new expression that is the same as the
+     * given, but with all possible column values replaced with literal values from the environment.
+     */
+    public static Expression partiallyEvaluate(Expression expression, Environment environment) {
+        // TODO keep working
+        Expression ret = null;
+        if (expression instanceof BooleanOperator) {
+            BooleanOperator booleanOperator = (BooleanOperator) expression;
+            int numTerms = booleanOperator.getNumTerms();
+            ArrayList<Expression> evaluated = new ArrayList<Expression>();
+            for (int i = 0; i < numTerms; i++) {
+                evaluated.add(partiallyEvaluate(booleanOperator.getTerm(i), environment));
+            }
+            ret = new BooleanOperator(booleanOperator.getType(), evaluated);
+        } else if (expression instanceof CompareOperator) {
+            CompareOperator compareOperator = (CompareOperator) expression;
+            Expression left = compareOperator.getLeftExpression();
+            Expression right = compareOperator.getRightExpression();
+
+            Expression newLeft = null;
+            Expression newRight = null;
+            if (left instanceof ColumnValue) {
+                Object columnValue = environment.getColumnValue(((ColumnValue) left).getColumnName());
+                if (columnValue != null) {
+                    newLeft = new LiteralValue(columnValue);
+                } else {
+                    try {
+                        newLeft = (ColumnValue) left.clone();
+                    } catch (CloneNotSupportedException e) {
+                    }
+                }
+            }
+            if (right instanceof ColumnValue) {
+                Object columnValue = environment.getColumnValue(((ColumnValue) right).getColumnName());
+                if (columnValue != null) {
+                    newRight = new LiteralValue(columnValue);
+                } else {
+                    try {
+                        newRight = (ColumnValue) right.clone();
+                    } catch (CloneNotSupportedException e) {
+                    }
+                }
+            }
+            ret = new CompareOperator(compareOperator.getType(), newLeft, newRight);
+
+        } else {
+            throw new IllegalArgumentException("Can't partially evaluate");
+        }
+        return ret;
+    }
 }

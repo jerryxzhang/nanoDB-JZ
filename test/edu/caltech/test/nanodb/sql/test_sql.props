@@ -13,7 +13,8 @@ setup_testBitmapIndexes = \
     INSERT INTO test_bitmap_indexes VALUES ( 2, 20 ); \
     INSERT INTO test_bitmap_indexes VALUES ( 3, 30 ); \
     INSERT INTO test_bitmap_indexes VALUES ( 4, 10 ); \
-    CREATE BITMAP INDEX ON test_bitmap_indexes( b );
+    CREATE BITMAP INDEX ON test_bitmap_indexes( b ); \
+    CREATE BITMAP INDEX ON test_bitmap_indexes( a );
 
 # This setup SQL is used for the simple-selects test case
 setup_testSimpleSelects = \

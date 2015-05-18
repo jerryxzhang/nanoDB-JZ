@@ -1,5 +1,6 @@
 package edu.caltech.nanodb.storage.bitmapfile;
 
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndex;
 import edu.caltech.nanodb.relations.TableInfo;
 
 /**
@@ -25,6 +26,10 @@ public class Bitmap {
 
     public void setBitmapFile(BitmapFile bitmapFile) {
         this.bitmapFile = bitmapFile;
+    }
+
+    public BitmapFile getBitmapFile() {
+        return bitmapFile;
     }
 
     public void setBitSet(BitSet bitset) {

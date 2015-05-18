@@ -66,11 +66,11 @@ public class ValueSet {
 
             Tuple tuple = file.getFirstTuple();
             while (true) {
+                if (tuple == null) break;
                 String value = (String) tuple.getColumnValue(0);
                 values.add(value);
 
                 tuple = file.getNextTuple(tuple);
-                if (tuple == null) break;
             }
         } catch (IOException e) {
             logger.error("Couldn't load ValueSet " + filename);

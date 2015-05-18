@@ -6,9 +6,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
-import edu.caltech.nanodb.storage.bitmapfile.BitmapFileManager;
-import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexManager;
-import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexUpdater;
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndexManager;
+import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndexUpdater;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.expressions.TypeCastException;

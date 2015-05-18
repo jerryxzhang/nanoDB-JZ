@@ -12,6 +12,9 @@
       <class name="edu.caltech.test.nanodb.indexes.bitmap.TestBitmapIndexScanNode">
         <methods>
           <include name="testSimpleEquality" />
+          <include name="testAnd" />
+          <include name="testOr" />
+          <include name="testNot" />
         </methods>
       </class>
     </classes>

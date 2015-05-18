@@ -25,18 +25,18 @@ import java.util.List;
  */
 public class NestedLoopsJoinNode extends ThetaJoinNode {
     /** A logging object for reporting anything interesting that happens. */
-    private static Logger logger = Logger.getLogger(SortMergeJoinNode.class);
+    private static Logger logger = Logger.getLogger(NestedLoopsJoinNode.class);
 
 
     /** Most recently retrieved tuple of the left relation. */
-    private Tuple leftTuple;
+    Tuple leftTuple;
 
     /** Most recently retrieved tuple of the right relation. */
-    private Tuple rightTuple;
+    Tuple rightTuple;
 
 
     /** Set to true when we have exhausted all tuples from our subplans. */
-    private boolean done;
+    boolean done;
 
 
     public NestedLoopsJoinNode(PlanNode leftChild, PlanNode rightChild,

@@ -4,25 +4,17 @@ package edu.caltech.nanodb.qeval;
 import java.io.IOException;
 import java.util.*;
 
-import edu.caltech.nanodb.storage.bitmapfile.BitmapIndexScanNode;
+import edu.caltech.nanodb.plans.*;
+import edu.caltech.nanodb.plans.BitmapIndexScanNode;
 import org.apache.log4j.Logger;
 
 import edu.caltech.nanodb.commands.FromClause;
 import edu.caltech.nanodb.commands.SelectClause;
 import edu.caltech.nanodb.commands.SelectValue;
-import edu.caltech.nanodb.expressions.BooleanOperator;
 import edu.caltech.nanodb.expressions.Expression;
 import edu.caltech.nanodb.expressions.FunctionCall;
 import edu.caltech.nanodb.expressions.OrderByExpression;
 import edu.caltech.nanodb.expressions.PredicateUtils;
-import edu.caltech.nanodb.plans.FileScanNode;
-import edu.caltech.nanodb.plans.HashedGroupAggregateNode;
-import edu.caltech.nanodb.plans.NestedLoopsJoinNode;
-import edu.caltech.nanodb.plans.PlanNode;
-import edu.caltech.nanodb.plans.ProjectNode;
-import edu.caltech.nanodb.plans.RenameNode;
-import edu.caltech.nanodb.plans.SelectNode;
-import edu.caltech.nanodb.plans.SortNode;
 import edu.caltech.nanodb.relations.JoinType;
 import edu.caltech.nanodb.relations.Schema;
 import edu.caltech.nanodb.relations.TableInfo;
@@ -425,29 +417,48 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
         Collection<Expression> conjuncts, HashSet<Expression> leafConjuncts)
         throws IOException {
 
-        Iterator<Expression> iter = conjuncts.iterator();
-        while (iter.hasNext()) {
-            Expression e = iter.next();
-            BitmapIndexScanNode bitmapIndexScanNode = new BitmapIndexScanNode(e,
-                    storageManager.getTableManager().openTable(fromClause.getTableName()),
-                    storageManager.getBitmapIndexManager());
-            bitmapIndexScanNode.processExpression(e);
-
-        }
-
         PlanNode plan;
 
         FromClause.ClauseType clauseType = fromClause.getClauseType();
         switch (clauseType) {
         case BASE_TABLE:
         case SELECT_SUBQUERY:
-
             if (clauseType == FromClause.ClauseType.SELECT_SUBQUERY) {
                 // This clause is a SQL subquery, so generate a plan from the
                 // subquery and return it.
                 plan = makePlan(fromClause.getSelectClause(), null);
             }
             else {
+                logger.info(conjuncts);
+                TableInfo info = storageManager.getTableManager().openTable(fromClause.getTableName());
+                HashSet<Expression> temp = new HashSet<Expression>();
+                PredicateUtils.findExprsUsingSchemas(conjuncts, false,
+                        temp, info.getSchema());
+                Expression leafPredicate = PredicateUtils.makePredicate(temp);
+
+                // Use bitmap indexes if they can be used for this predicate and table
+                if (BitmapIndexScanNode.canProcessExpression(leafPredicate, storageManager.getBitmapIndexManager(), info)) {
+                    plan = new BitmapIndexScanNode(leafPredicate, info, storageManager.getBitmapIndexManager());
+                    plan.prepare();
+                    leafConjuncts.addAll(temp);
+                    return plan;
+                }
+
+                // Check if the predicate can be broken down into a predicate that partially uses bitmap indexes
+                HashSet<Expression> evaluated = new HashSet<Expression>();
+                if (BitmapIndexScanNode.canSplitExpression(leafPredicate, storageManager.getBitmapIndexManager(), info, evaluated)) {
+                    Expression bitmappred = PredicateUtils.makePredicate(evaluated);
+                    HashSet<Expression> leftovers = new HashSet<Expression>(temp);
+                    leftovers.removeAll(evaluated);
+                    Expression otherpred = PredicateUtils.makePredicate(leftovers);
+                    // Solve part of the predicate with indexes, and the rest with a simple filter
+                    plan = new BitmapIndexScanNode(bitmappred, info, storageManager.getBitmapIndexManager());
+                    plan = new SimpleFilterNode(plan, otherpred);
+                    plan.prepare();
+                    leafConjuncts.addAll(temp);
+                    return plan;
+                }
+
                 // This clause is a base-table, so we just generate a file-scan
                 // plan node for the table.
                 plan = makeSimpleSelect(fromClause.getTableName(), null, null);

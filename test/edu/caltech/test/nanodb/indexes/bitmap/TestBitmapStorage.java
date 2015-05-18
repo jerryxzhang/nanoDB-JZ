@@ -61,26 +61,35 @@ public class TestBitmapStorage extends SqlTestCase {
         StorageManager storageManager = server.getStorageManager();
         BitmapFileManager bitmapFileManager = new BitmapFileManager(storageManager);
 
-        int mapsize = 10000;
+        int mapsize = 100000;
         String filename = "TESTBITMAP";
         Bitmap map = bitmapFileManager.createBitmapFile(filename, null);
 
         ArrayList<Integer> ints = new ArrayList<Integer>();
         Random rand = new Random();
         for (int i = 0; i < mapsize; i++) {
-            int r = rand.nextInt(100000);
+            int r = rand.nextInt(1000000);
             if (!ints.contains(r)) {
                 ints.add(r);
-                map.set(r);
             }
         }
+
+        long t = System.currentTimeMillis();
+        for (int i = 0; i < ints.size(); i++) {
+            map.set(ints.get(i));
+        }
+        logger.info("Took " + (System.currentTimeMillis() - t) + " millis to set bitmap");
+
         Collections.sort(ints);
 
         bitmapFileManager.clearCache();
         storageManager.getBufferManager().flushAll();
         assert(storageManager.getFileManager().fileExists(filename));
 
+        t = System.currentTimeMillis();
         Bitmap map2 = bitmapFileManager.loadBitmapFile(filename, null);
+        logger.info("Took " + (System.currentTimeMillis() - t) + " millis to load bitmap");
+        logger.info("Size = " + map2.save().length + " Pages  = " + map2.getBitmapFile().getDbFile().getNumPages());
 
         int[] map2ints = map2.toArray();
         for (int i = 0; i < map2ints.length; i++) {

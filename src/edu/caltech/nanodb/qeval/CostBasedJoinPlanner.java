@@ -429,7 +429,6 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                 plan = makePlan(fromClause.getSelectClause(), null);
             }
             else {
-                logger.info(conjuncts);
                 TableInfo info = storageManager.getTableManager().openTable(fromClause.getTableName());
                 HashSet<Expression> temp = new HashSet<Expression>();
                 PredicateUtils.findExprsUsingSchemas(conjuncts, false,

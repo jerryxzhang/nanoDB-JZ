@@ -40,9 +40,9 @@ public class BitmapFileManager {
      * and allocates an empty bitset.
      */
     public Bitmap createBitmapFile(String idxFileName, BitmapIndex parent) {
-        logger.info("Creating bitmap file for file " + idxFileName);
+        logger.debug("Creating bitmap file for file " + idxFileName);
 
-        Bitmap bitmap = new Bitmap(parent, idxFileName);
+        Bitmap bitmap = new Bitmap();
 
         FileManager fileManager = storageManager.getFileManager();
 
@@ -96,12 +96,12 @@ public class BitmapFileManager {
             logger.error(e.getMessage());
         }
 
-        logger.info("Opening existing bitmap index file " + idxFileName);
+        logger.debug("Opening existing bitmap index file " + idxFileName);
 
         if (dbFile.getType() != DBFileType.BITMAP_INDEX_FILE)
             throw new IllegalArgumentException("Not a bitmap index file");
 
-        Bitmap bitmap = new Bitmap(parent, idxFileName);
+        Bitmap bitmap = new Bitmap();
         BitmapFile bitmapFile = new BitmapFile(dbFile, bitmap, this);
         bitmap.setBitmapFile(bitmapFile);
 

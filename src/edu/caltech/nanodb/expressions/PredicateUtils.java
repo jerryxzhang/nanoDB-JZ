@@ -52,8 +52,9 @@ public class PredicateUtils {
 
     public static Expression makePredicate(Expression... conjuncts) {
         ArrayList<Expression> list = new ArrayList<Expression>();
-        for (Expression conjunct : conjuncts)
-            list.add(conjunct);
+        for (Expression conjunct : conjuncts) {
+            if (conjunct != null) list.add(conjunct);
+        }
 
         return makePredicate(list);
     }
@@ -197,8 +198,7 @@ public class PredicateUtils {
      * given, but with all possible column values replaced with literal values from the environment.
      */
     public static Expression partiallyEvaluate(Expression expression, Environment environment) {
-        // TODO keep working
-        Expression ret = null;
+        Expression ret;
         if (expression instanceof BooleanOperator) {
             BooleanOperator booleanOperator = (BooleanOperator) expression;
             int numTerms = booleanOperator.getNumTerms();
@@ -222,6 +222,7 @@ public class PredicateUtils {
                     try {
                         newLeft = (ColumnValue) left.clone();
                     } catch (CloneNotSupportedException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             }
@@ -233,13 +234,18 @@ public class PredicateUtils {
                     try {
                         newRight = (ColumnValue) right.clone();
                     } catch (CloneNotSupportedException e) {
+                        throw new RuntimeException(e);
                     }
                 }
             }
             ret = new CompareOperator(compareOperator.getType(), newLeft, newRight);
 
         } else {
-            throw new IllegalArgumentException("Can't partially evaluate");
+            try {
+                return (Expression) expression.clone();
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
+            }
         }
         return ret;
     }

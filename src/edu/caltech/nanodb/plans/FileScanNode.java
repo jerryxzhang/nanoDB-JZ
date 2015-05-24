@@ -314,4 +314,8 @@ public class FileScanNode extends SelectNode {
         logger.debug("Resetting to previously marked position in tuple-stream.");
         jumpToMarkedTuple = true;
     }
+
+    public TableInfo getTableInfo() {
+        return tableInfo;
+    }
 }

@@ -3,6 +3,8 @@ package edu.caltech.nanodb.storage.bitmapfile;
 import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndex;
 import edu.caltech.nanodb.relations.TableInfo;
 
+import java.util.Arrays;
+
 /**
  * Represents an individual bitmap of some type that can do operations against other bitmaps,
  * and be modified. Bitmaps can be disk-backed, in which case any operations modifying the bitmap
@@ -12,16 +14,18 @@ import edu.caltech.nanodb.relations.TableInfo;
  */
 public class Bitmap {
 
-    private String name;
     private BitmapFile bitmapFile;
     private BitSet bitset;
-    private BitmapIndex parent;
 
-    public Bitmap(BitmapIndex parent, String name) {
-        this.parent = parent;
-        this.name = name;
+    public Bitmap() {
         this.bitset = null;
         this.bitmapFile = null;
+    }
+
+    public static Bitmap emptyBitmap() {
+        Bitmap ret = new Bitmap();
+        ret.setBitSet(new BitSetRoaringImpl());
+        return ret;
     }
 
     public void setBitmapFile(BitmapFile bitmapFile) {
@@ -40,22 +44,6 @@ public class Bitmap {
         return bitmapFile != null;
     }
 
-    public TableInfo getTableInfo() {
-        return parent.getTableInfo();
-    }
-
-    public String getTableName() {
-        return parent.getTableInfo().getTableName();
-    }
-
-    public String getAttribute() {
-        return parent.getAttribute();
-    }
-
-    public String getName() {
-        return name;
-    }
-
     public void load(byte[] bytes) {
         this.bitset.load(bytes);
     }
@@ -65,7 +53,7 @@ public class Bitmap {
     }
 
     public Bitmap clone() {
-        Bitmap ret = new Bitmap(parent, null);
+        Bitmap ret = new Bitmap();
         ret.setBitSet(bitset.clone());
         return ret;
     }
@@ -132,5 +120,10 @@ public class Bitmap {
         Bitmap ret = m1.clone();
         ret.bitset.xor(m2.bitset);
         return ret;
+    }
+
+    @Override
+    public String toString() {
+        return Arrays.toString(toArray());
     }
 }

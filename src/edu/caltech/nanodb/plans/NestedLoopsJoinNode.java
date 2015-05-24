@@ -229,7 +229,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
      * @return {@code true} if another pair of tuples was found to join, or
      *         {@code false} if no more pairs of tuples are available to join.
      */
-    private boolean getTuplesToJoin() throws IOException {
+    protected boolean getTuplesToJoin() throws IOException {
         if (leftTuple == null && !done) {
             leftTuple = leftChild.getNextTuple();
             if (leftTuple == null) {
@@ -264,7 +264,7 @@ public class NestedLoopsJoinNode extends ThetaJoinNode {
     }
 
 
-    private boolean canJoinTuples() {
+    protected boolean canJoinTuples() {
         // If the predicate was not set, we can always join them!
         if (predicate == null)
             return true;

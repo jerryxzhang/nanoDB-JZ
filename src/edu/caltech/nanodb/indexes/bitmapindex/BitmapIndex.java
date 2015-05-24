@@ -6,6 +6,7 @@ import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
 import edu.caltech.nanodb.storage.bitmapfile.ValueSet;
 import edu.caltech.nanodb.storage.heapfile.HeapFilePageTuple;
 import edu.caltech.nanodb.storage.heapfile.HeapTupleFile;
+import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -19,6 +20,8 @@ import java.util.Iterator;
  * value of the attribute.
  */
 public class BitmapIndex {
+    private static Logger logger = Logger.getLogger(BitmapIndex.class);
+
     private BitmapIndexManager bitmapIndexManager;
     private StorageManager storageManager;
 
@@ -122,9 +125,21 @@ public class BitmapIndex {
 
         String value = String.valueOf(tuple.getColumnValue(table.getSchema().getColumnIndex(attribute)));
 
-        // Not strictly necessary to unset here, but it lets us check if there are no values left
-        // this.valueBitmaps.get(value).unset(location);
-        // TODO ?? if there are no values left, remove this bitmap and remove the value from valuelist
+        // It is necessary to unset the bit here since if a new tuple is added in the same place,
+        // it doesn't have knowledge of the right value bitmap to unset it.
+        Bitmap valueBitmap = getBitmap(value);
+        valueBitmap.unset(location);
+
+        // If there are no rows with this value left, delete the bitmap and remove the value from the list
+        if (valueBitmap.cardinality() == 0) {
+            values.removeValue(value);
+            valueBitmaps.remove(value);
+            try {
+                storageManager.getFileManager().deleteDBFile(valueBitmap.getBitmapFile().getDbFile());
+            } catch (IOException e) {
+                logger.error("Failed to delete bitmap file " + value);
+            }
+        }
     }
 
     /**
@@ -162,6 +177,12 @@ public class BitmapIndex {
             return map;
         }
         return valueBitmaps.get(value);
+    }
+
+    public Bitmap getBitmapWithDefault(String value) {
+        Bitmap ret = getBitmap(value);
+        if (ret == null) ret = Bitmap.emptyBitmap();
+        return ret;
     }
 
     /**

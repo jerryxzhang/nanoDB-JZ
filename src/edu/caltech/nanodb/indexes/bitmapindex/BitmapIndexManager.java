@@ -9,6 +9,8 @@ import edu.caltech.nanodb.storage.bitmapfile.BitmapFileManager;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.util.AbstractMap;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -22,8 +24,11 @@ public class BitmapIndexManager {
 
     private BitmapFileManager bitmapFileManager;
 
+    private HashMap<Map.Entry<TableInfo, String>, BitmapIndex> cache;
+
     public BitmapIndexManager(StorageManager storageManager) {
         this.bitmapFileManager = new BitmapFileManager(storageManager);
+        cache = new HashMap<Map.Entry<TableInfo, String>, BitmapIndex>();
     }
 
     public BitmapFileManager getBitmapFileManager() {
@@ -61,6 +66,7 @@ public class BitmapIndexManager {
             logger.error("Failed to create new bitmap index " + indexName);
         }
         logger.info("Successfully created bitmap index on " + tableInfo.getTableName() + " : " + attribute);
+        cache.put(new AbstractMap.SimpleEntry<TableInfo, String>(tableInfo, attribute), bitmapIndex);
         return bitmapIndex;
     }
 
@@ -99,8 +105,12 @@ public class BitmapIndexManager {
      * Load an existing bitmap index
      */
     public BitmapIndex openBitmapIndex(TableInfo tableInfo, String attribute) {
+        Map.Entry<TableInfo, String> key = new AbstractMap.SimpleEntry<TableInfo, String>(tableInfo, attribute);
+        if (cache.containsKey(key)) return cache.get(key);
+
         BitmapIndex bitmapIndex = new BitmapIndex(tableInfo, attribute, this);
         bitmapIndex.load();
+        cache.put(key, bitmapIndex);
         return bitmapIndex;
     }
 

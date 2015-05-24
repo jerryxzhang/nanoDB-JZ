@@ -220,7 +220,6 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
             plan = new SortNode(plan, orderByExprs);
 
         plan.prepare();
-
         return plan;
     }
 
@@ -418,6 +417,7 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
         throws IOException {
 
         PlanNode plan;
+        boolean bitmap = false;
 
         FromClause.ClauseType clauseType = fromClause.getClauseType();
         switch (clauseType) {
@@ -435,14 +435,6 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                         temp, info.getSchema());
                 Expression leafPredicate = PredicateUtils.makePredicate(temp);
 
-                // Use bitmap indexes if they can be used for this predicate and table
-                if (BitmapIndexScanNode.canProcessExpression(leafPredicate, storageManager.getBitmapIndexManager(), info)) {
-                    plan = new BitmapIndexScanNode(leafPredicate, info, storageManager.getBitmapIndexManager());
-                    plan.prepare();
-                    leafConjuncts.addAll(temp);
-                    return plan;
-                }
-
                 // Check if the predicate can be broken down into a predicate that partially uses bitmap indexes
                 HashSet<Expression> evaluated = new HashSet<Expression>();
                 if (BitmapIndexScanNode.canSplitExpression(leafPredicate, storageManager.getBitmapIndexManager(), info, evaluated)) {
@@ -450,17 +442,17 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                     HashSet<Expression> leftovers = new HashSet<Expression>(temp);
                     leftovers.removeAll(evaluated);
                     Expression otherpred = PredicateUtils.makePredicate(leftovers);
-                    // Solve part of the predicate with indexes, and the rest with a simple filter
-                    plan = new BitmapIndexScanNode(bitmappred, info, storageManager.getBitmapIndexManager());
-                    plan = new SimpleFilterNode(plan, otherpred);
-                    plan.prepare();
-                    leafConjuncts.addAll(temp);
-                    return plan;
-                }
 
-                // This clause is a base-table, so we just generate a file-scan
-                // plan node for the table.
-                plan = makeSimpleSelect(fromClause.getTableName(), null, null);
+                    plan = new BitmapIndexScanNode(bitmappred, otherpred, info, storageManager.getBitmapIndexManager());
+
+                    plan.prepare();
+                    leafConjuncts.addAll(evaluated);
+                    bitmap = true;
+                } else {
+                    // This clause is a base-table, so we just generate a file-scan
+                    // plan node for the table.
+                    plan = makeSimpleSelect(fromClause.getTableName(), null, null);
+                }
             }
 
             // If the FROM-clause renames the result, apply the renaming here.
@@ -479,7 +471,7 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                 leafConjuncts, schema);
 
             Expression leafPredicate = PredicateUtils.makePredicate(leafConjuncts);
-            if (leafPredicate != null) {
+            if (leafPredicate != null && !bitmap) {
                 plan = addPredicateToPlan(plan, leafPredicate);
             }
 
@@ -633,9 +625,18 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
                     // We only build LEFT-DEEP join plans; the leaf node goes
                     // on the right!
 
-                    NestedLoopsJoinNode newJoinPlan =
-                        new NestedLoopsJoinNode(prevPlan, leafPlan,
-                        JoinType.INNER, joinPredicate);
+                    PlanNode newJoinPlan;
+
+                    // Check if we can do a bitmap index join instead
+                    BitmapIndexJoinNode bitmapjoin = new BitmapIndexJoinNode(prevPlan, leafPlan, JoinType.INNER,
+                            joinPredicate, storageManager.getBitmapIndexManager());
+                    if (bitmapjoin.isValid()) {
+                        newJoinPlan = bitmapjoin;
+                    } else {
+                        newJoinPlan = new NestedLoopsJoinNode(prevPlan, leafPlan,
+                                JoinType.INNER, joinPredicate);
+                    }
+
                     newJoinPlan.prepare();
                     PlanCost newJoinCost = newJoinPlan.getCost();
 

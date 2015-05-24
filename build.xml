@@ -62,6 +62,7 @@
             <!-- NEW:  <include name="commons-lang3-3.1.jar" /> -->
             <include name="commons-io-2.1.jar" />
             <include name="jcip-annotations.jar" />
+            <include name="RoaringBitmap-0.4.9.jar" />
         </fileset>
     </path>
 

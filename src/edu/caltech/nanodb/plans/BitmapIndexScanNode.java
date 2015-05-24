@@ -2,12 +2,14 @@ package edu.caltech.nanodb.plans;
 
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
 import edu.caltech.nanodb.expressions.*;
 import edu.caltech.nanodb.qeval.PlanCost;
 import edu.caltech.nanodb.relations.TableInfo;
+import edu.caltech.nanodb.relations.Tuple;
 import edu.caltech.nanodb.storage.bitmapfile.Bitmap;
 import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndex;
 import edu.caltech.nanodb.indexes.bitmapindex.BitmapIndexManager;
@@ -48,6 +50,8 @@ public class BitmapIndexScanNode extends SelectNode {
 
     private boolean jumpToMarkedTuple;
 
+    private Expression extra;
+
 
     /**
      * Construct an index scan node that performs an equality-based lookup on
@@ -55,37 +59,38 @@ public class BitmapIndexScanNode extends SelectNode {
      * be solved with bitmap indexes. A NULL predicate simply selects all
      * tuples in the table.
      */
-    public BitmapIndexScanNode(Expression predicate, TableInfo table, BitmapIndexManager manager) {
+    public BitmapIndexScanNode(Expression predicate, Expression extra, TableInfo table, BitmapIndexManager manager) {
         super(predicate);
         this.tableInfo = table;
+        this.extra = extra;
         this.tableTupleFile = table.getTupleFile();
         this.bitmapIndexManager = manager;
-
-        setPredicate(predicate, table);
-        logger.info("Used a BitmapIndexScan to pull " + pointers.length + " values from table " + tableInfo.getTableName());
     }
 
     /**
      * Sets the predicate to a new value, and recalculates the tuple results. Also resets the node.
      */
-    public void setPredicate(Expression predicate, TableInfo table) {
+    public void setPredicate(Expression predicate) {
         if (currentTuple != null)
             logger.error("ERROR setting a predicate when all tuples are not finished");
 
         this.predicate = predicate;
-        Bitmap bitmap = null;
+        Bitmap bitmap = bitmapIndexManager.getExistenceBitmap(tableInfo);
+
         // Evaluate the expression into a bitmap and pull file pointers from it
-        if (predicate == null) {
-            bitmap = bitmapIndexManager.getExistenceBitmap(table);
-        } else {
-            bitmap = processExpression(predicate);
+        if (predicate != null) {
+            bitmap = Bitmap.and(bitmap, processExpression(predicate));
         }
         pointers = new FilePointer[bitmap.cardinality()];
         int[] indexes = bitmap.toArray();
         for (int i = 0; i < pointers.length; i++) {
             pointers[i] = BitmapIndex.getPointer(indexes[i]);
         }
-        initialize();
+
+        currentTupleIndex = 0;
+        jumpToMarkedTuple = false;
+        super.initialize();
+        logger.debug("Used a BitmapIndexScan to pull " + pointers.length + " values from table " + tableInfo.getTableName());
     }
 
     /**
@@ -151,11 +156,11 @@ public class BitmapIndexScanNode extends SelectNode {
             // Construct the bitmap result
             switch (compareOperator.getType()) {
                 case EQUALS:
-                    ret = bitmapIndexManager.openBitmapIndex(tableInfo, columnName).getBitmap(value);
+                    ret = bitmapIndexManager.openBitmapIndex(tableInfo, columnName).getBitmapWithDefault(value);
                     break;
                 case NOT_EQUALS:
                     // Add a NOT operation over the equals
-                    ret = bitmapIndexManager.openBitmapIndex(tableInfo, columnName).getBitmap(value);
+                    ret = bitmapIndexManager.openBitmapIndex(tableInfo, columnName).getBitmapWithDefault(value);
                     ret = Bitmap.xor(ret, bitmapIndexManager.getExistenceBitmap(tableInfo));
                     break;
                 default:
@@ -258,6 +263,9 @@ public class BitmapIndexScanNode extends SelectNode {
                 default:
                     return false;
             }
+        } else if (canProcessExpression(expression, bitmapIndexManager, tableInfo)) {
+            evaluated.add(expression);
+            return true;
         }
         return false;
     }
@@ -305,6 +313,7 @@ public class BitmapIndexScanNode extends SelectNode {
         node.tableInfo = tableInfo;
         node.tableTupleFile = tableTupleFile;
         node.pointers = pointers;
+        node.extra = extra;
         return node;
     }
 
@@ -357,6 +366,8 @@ public class BitmapIndexScanNode extends SelectNode {
         TableStats tableStats = tableTupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
+        initialize();
+
         // A simple costing
         cost = new PlanCost(size(), tableStats.avgTupleSize,
                 tableStats.numTuples, tableStats.numDataPages);
@@ -369,6 +380,8 @@ public class BitmapIndexScanNode extends SelectNode {
         currentTupleIndex = 0;
         // Reset our marking state.
         jumpToMarkedTuple = false;
+
+        setPredicate(predicate);
     }
 
     @Override
@@ -379,7 +392,9 @@ public class BitmapIndexScanNode extends SelectNode {
                 jumpToMarkedTuple = false;
                 currentTuple = tableTupleFile.getTuple(pointers[currentTupleIndex]);
             } else {
-                if (currentTupleIndex == 0 && currentTuple == null) {
+                if (pointers.length == 0) {
+                    currentTuple = null;
+                } else if (currentTupleIndex == 0 && currentTuple == null) {
                     currentTuple = tableTupleFile.getTuple(pointers[currentTupleIndex]);
                 } else if (currentTupleIndex == pointers.length - 1) {
                     currentTuple = null;
@@ -389,7 +404,7 @@ public class BitmapIndexScanNode extends SelectNode {
                 }
             }
         } catch (InvalidFilePointerException e) {
-            logger.error("Invalid file pointer!!!");
+            logger.warn("Invalid file pointer!!!");
         }
     }
 
@@ -413,5 +428,28 @@ public class BitmapIndexScanNode extends SelectNode {
     public void resetToLastMark() {
         logger.debug("Resetting to previously marked position in tuple-stream.");
         jumpToMarkedTuple = true;
+    }
+
+    /**
+     * Since the bitmap index does selecting for us, the only predicate we worry about is the extra
+     */
+    protected boolean isTupleSelected(Tuple tuple) {
+        // If the predicate was not set, return true.
+        if (extra == null)
+            return true;
+
+        // Set up the environment and then evaluate the predicate!
+
+        environment.clear();
+        environment.addTuple(schema, tuple);
+        return extra.evaluatePredicate(environment);
+    }
+
+    public Expression getPredicate() {
+        return predicate;
+    }
+
+    public TableInfo getTableInfo() {
+        return tableInfo;
     }
 }

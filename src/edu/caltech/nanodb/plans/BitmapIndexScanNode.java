@@ -2,7 +2,6 @@ package edu.caltech.nanodb.plans;
 
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -327,6 +326,8 @@ public class BitmapIndexScanNode extends SelectNode {
         buf.append(tableInfo.getTableName());
         buf.append("; PREDICATE: ");
         buf.append(predicate);
+        buf.append("; EXTRAPREDICATE: ");
+        buf.append(extra);
         buf.append("]");
 
         return buf.toString();

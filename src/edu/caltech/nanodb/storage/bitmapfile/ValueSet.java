@@ -89,6 +89,9 @@ public class ValueSet {
         }
     }
 
+    /**
+     * Remove a value from the valueset.
+     */
     public void removeValue(String value) {
         values.remove(value);
         try {

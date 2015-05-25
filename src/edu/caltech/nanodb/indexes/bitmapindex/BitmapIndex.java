@@ -179,6 +179,9 @@ public class BitmapIndex {
         return valueBitmaps.get(value);
     }
 
+    /**
+     * Gets the bitmap for a value, but returns an empty bitmap if the value is not found
+     */
     public Bitmap getBitmapWithDefault(String value) {
         Bitmap ret = getBitmap(value);
         if (ret == null) ret = Bitmap.emptyBitmap();
@@ -270,6 +273,5 @@ public class BitmapIndex {
         }
         return new StringBuilder(table).append("()").append(attr).append("()").append(value).append(".bitmap").toString();
     }
-
 
 }

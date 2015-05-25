@@ -7,6 +7,7 @@
         <methods>
           <include name="testBitmapReadWrite" />
           <include name="testValueSet" />
+          <include name="testBitSetStorage" />
         </methods>
       </class>
       <class name="edu.caltech.test.nanodb.indexes.bitmap.TestBitmapIndexScanNode">
@@ -15,6 +16,14 @@
           <include name="testAnd" />
           <include name="testOr" />
           <include name="testNot" />
+        </methods>
+      </class>
+      <class name="edu.caltech.test.nanodb.indexes.bitmap.TestBitmapIndexQueries">
+        <methods>
+          <include name="testSimpleSelects" />
+          <include name="testPartialSelects" />
+          <include name="testJoins" />
+          <include name="testAggregations" />
         </methods>
       </class>
     </classes>

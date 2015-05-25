@@ -18,8 +18,10 @@ import java.util.HashSet;
 public class TestBitmapIndexScanNode extends SqlTestCase {
     private static Logger logger = Logger.getLogger(TestBitmapIndexScanNode.class);
 
-    public TestBitmapIndexScanNode() {
+    public TestBitmapIndexScanNode() throws Throwable {
         super("setup_testBitmapIndexes");
+
+
     }
 
     public static String tableName = "TEST_BITMAP_INDEXES";
@@ -27,11 +29,13 @@ public class TestBitmapIndexScanNode extends SqlTestCase {
     public static String column2 = "A";
 
     public void testSimpleEquality() throws Throwable {
+
+
         Expression pred = new CompareOperator(CompareOperator.Type.EQUALS,
                 new ColumnValue(new ColumnName(tableName, column1)),
                 new LiteralValue(10));
 
-        BitmapIndexScanNode node = new BitmapIndexScanNode(pred,
+        BitmapIndexScanNode node = new BitmapIndexScanNode(pred, null,
                 server.getStorageManager().getTableManager().openTable(tableName),
                 server.getStorageManager().getBitmapIndexManager());
         node.prepare();
@@ -66,7 +70,7 @@ public class TestBitmapIndexScanNode extends SqlTestCase {
         assert(BitmapIndexScanNode.canProcessExpression(pred, server.getStorageManager().getBitmapIndexManager(),
                 server.getStorageManager().getTableManager().openTable(tableName)));
 
-        BitmapIndexScanNode node = new BitmapIndexScanNode(pred,
+        BitmapIndexScanNode node = new BitmapIndexScanNode(pred, null,
                 server.getStorageManager().getTableManager().openTable(tableName),
                 server.getStorageManager().getBitmapIndexManager());
         node.prepare();
@@ -95,7 +99,7 @@ public class TestBitmapIndexScanNode extends SqlTestCase {
         assert(BitmapIndexScanNode.canProcessExpression(pred, server.getStorageManager().getBitmapIndexManager(),
                 server.getStorageManager().getTableManager().openTable(tableName)));
 
-        BitmapIndexScanNode node = new BitmapIndexScanNode(pred,
+        BitmapIndexScanNode node = new BitmapIndexScanNode(pred, null,
                 server.getStorageManager().getTableManager().openTable(tableName),
                 server.getStorageManager().getBitmapIndexManager());
         node.prepare();
@@ -122,6 +126,7 @@ public class TestBitmapIndexScanNode extends SqlTestCase {
     }
 
     public void testNot() throws Throwable {
+
         HashSet<Expression> set = new HashSet<Expression>();
         set.add(new CompareOperator(CompareOperator.Type.EQUALS,
                 new ColumnValue(new ColumnName(tableName, column1)),
@@ -131,7 +136,7 @@ public class TestBitmapIndexScanNode extends SqlTestCase {
         assert(BitmapIndexScanNode.canProcessExpression(pred, server.getStorageManager().getBitmapIndexManager(),
                 server.getStorageManager().getTableManager().openTable(tableName)));
 
-        BitmapIndexScanNode node = new BitmapIndexScanNode(pred,
+        BitmapIndexScanNode node = new BitmapIndexScanNode(pred, null,
                 server.getStorageManager().getTableManager().openTable(tableName),
                 server.getStorageManager().getBitmapIndexManager());
         node.prepare();

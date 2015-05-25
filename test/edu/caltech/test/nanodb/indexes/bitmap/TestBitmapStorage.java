@@ -61,14 +61,14 @@ public class TestBitmapStorage extends SqlTestCase {
         StorageManager storageManager = server.getStorageManager();
         BitmapFileManager bitmapFileManager = new BitmapFileManager(storageManager);
 
-        int mapsize = 100000;
+        int mapsize = 10000;
         String filename = "TESTBITMAP";
         Bitmap map = bitmapFileManager.createBitmapFile(filename, null);
 
         ArrayList<Integer> ints = new ArrayList<Integer>();
         Random rand = new Random();
         for (int i = 0; i < mapsize; i++) {
-            int r = rand.nextInt(1000000);
+            int r = rand.nextInt(100000);
             if (!ints.contains(r)) {
                 ints.add(r);
             }
@@ -95,6 +95,13 @@ public class TestBitmapStorage extends SqlTestCase {
         for (int i = 0; i < map2ints.length; i++) {
             assert(ints.contains(map2ints[i]));
         }
+    }
+
+    /**
+     * Tests how much space the bitset class would take up given various inputs
+     */
+    public void testBitSetStorage() {
+        // TODO
     }
 
 

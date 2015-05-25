@@ -627,6 +627,10 @@ public class CostBasedJoinPlanner extends AbstractPlannerImpl {
 
                     PlanNode newJoinPlan;
 
+                    logger.info(prevPlan);
+                    logger.info(leafPlan);
+
+
                     // Check if we can do a bitmap index join instead
                     BitmapIndexJoinNode bitmapjoin = new BitmapIndexJoinNode(prevPlan, leafPlan, JoinType.INNER,
                             joinPredicate, storageManager.getBitmapIndexManager());

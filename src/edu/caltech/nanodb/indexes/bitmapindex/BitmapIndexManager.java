@@ -66,6 +66,8 @@ public class BitmapIndexManager {
             logger.error("Failed to create new bitmap index " + indexName);
         }
         logger.info("Successfully created bitmap index on " + tableInfo.getTableName() + " : " + attribute);
+
+        // Keep the new index in the cache
         cache.put(new AbstractMap.SimpleEntry<TableInfo, String>(tableInfo, attribute), bitmapIndex);
         return bitmapIndex;
     }
@@ -102,7 +104,7 @@ public class BitmapIndexManager {
     }
 
     /**
-     * Load an existing bitmap index
+     * Load an existing bitmap index from cache if possible, otherwise opens from file
      */
     public BitmapIndex openBitmapIndex(TableInfo tableInfo, String attribute) {
         Map.Entry<TableInfo, String> key = new AbstractMap.SimpleEntry<TableInfo, String>(tableInfo, attribute);

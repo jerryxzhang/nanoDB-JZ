@@ -46,8 +46,10 @@ public class BitmapIndexJoinNode extends NestedLoopsJoinNode {
         }
 
         // If it can't be solved the previous way, try again
-        if (!canSolvePredicate(predicate))
+        if (!canSolvePredicate(predicate)) {
             swap();
+
+        }
 
         if (rightChild instanceof FileScanNode) {
             rightTable = ((FileScanNode) rightChild).getTableInfo();
@@ -183,10 +185,11 @@ public class BitmapIndexJoinNode extends NestedLoopsJoinNode {
 
     @Override
     protected boolean canJoinTuples() {
+        // TODO eventually handle extra predicates on the right side
         return true;
     }
 
-    //TODO
+    //TODO mark and reset
     @Override
     public void markCurrentPosition() {
 

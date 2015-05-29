@@ -70,6 +70,7 @@ public class BitmapIndexScanNode extends SelectNode {
      * Sets the predicate to a new value, and recalculates the tuple results. Also resets the node.
      */
     public void setPredicate(Expression predicate) {
+        if (predicate == this.predicate && this.pointers != null) return;
         if (currentTuple != null)
             logger.error("ERROR setting a predicate when all tuples are not finished");
 
@@ -88,8 +89,8 @@ public class BitmapIndexScanNode extends SelectNode {
 
         currentTupleIndex = 0;
         jumpToMarkedTuple = false;
-        super.initialize();
-        logger.debug("Used a BitmapIndexScan to pull " + pointers.length + " values from table " + tableInfo.getTableName());
+        done = false;
+        logger.info("Used a BitmapIndexScan to pull " + pointers.length + " values from table " + tableInfo.getTableName());
     }
 
     /**
@@ -367,7 +368,7 @@ public class BitmapIndexScanNode extends SelectNode {
         TableStats tableStats = tableTupleFile.getStats();
         stats = tableStats.getAllColumnStats();
 
-        initialize();
+        setPredicate(predicate);
 
         // A simple costing
         cost = new PlanCost(size(), tableStats.avgTupleSize,
@@ -381,8 +382,6 @@ public class BitmapIndexScanNode extends SelectNode {
         currentTupleIndex = 0;
         // Reset our marking state.
         jumpToMarkedTuple = false;
-
-        setPredicate(predicate);
     }
 
     @Override

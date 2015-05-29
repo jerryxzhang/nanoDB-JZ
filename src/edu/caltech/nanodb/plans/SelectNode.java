@@ -23,7 +23,7 @@ public abstract class SelectNode extends PlanNode {
 
 
     /** True if we have finished scanning or pulling tuples from children. */
-    private boolean done;
+    protected boolean done;
 
 
     /**

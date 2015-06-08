@@ -32,8 +32,8 @@ echo "select * from employees where home_loc_id = 45 and work_loc_id = 166"
 echo "select * from employees where home_loc_id = 45 and work_loc_id = 166;" | ./nanodb 2>&1 | grep "sec to evaluate."
 echo "---------"
 
-echo "select * from employees join cities on home_loc_id = city_id and work_loc_id = city_id where city_name = 'New York'"
-echo "select * from employees join cities on home_loc_id = city_id and work_loc_id = city_id where city_name = 'New York';" | ./nanodb 2>&1 | grep "sec to evaluate."
+echo "select * from employees join cities on home_loc_id = city_id and work_loc_id = city_id"
+echo "select * from employees join cities on home_loc_id = city_id and work_loc_id = city_id;" | ./nanodb 2>&1 | grep "sec to evaluate."
 echo "---------"
 
 
